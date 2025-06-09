@@ -1,0 +1,93 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Django: Run Server",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": [
+                "${workspaceFolder}/manage.py",
+                "runserver"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Make Migrations",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": [
+                "${workspaceFolder}/manage.py",
+                "makemigrations"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Migrate",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": [
+                "${workspaceFolder}/manage.py",
+                "migrate"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Create Superuser",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": [
+                "${workspaceFolder}/manage.py",
+                "createsuperuser"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Shell",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": [
+                "${workspaceFolder}/manage.py",
+                "shell"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Run Tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": [
+                "${workspaceFolder}/manage.py",
+                "test"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

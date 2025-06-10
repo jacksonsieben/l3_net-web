@@ -6,3 +6,4 @@ from .model_version import ModelVersion
 from .run import Run
 from .exam import Exam
 from .validation import Validation
+from .run_assignment import RunAssignment

@@ -22,11 +22,17 @@
           <div class="space-x-4">
             {% if user.is_authenticated %}
             <a
-              href="{% url 'validation:exam_list' %}"
+              href="{% url 'validation:run_assignment_list' %}"
               class="text-gray-700 hover:text-blue-600"
-              >Validation</a
+              >My Assignments</a
             >
             {% if user.is_superuser %}
+            <span class="text-gray-500">|</span>
+            <a
+              href="{% url 'validation:exam_list' %}"
+              class="text-gray-700 hover:text-blue-600"
+              >All Exams</a
+            >
             <span class="text-gray-500">|</span>
             <a
               href="{% url 'users:register' %}"

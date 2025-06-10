@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 from validation.models import (
     Exam, ModelVersion, Run, Polygon, 
-    PredVertebra, PredSeverity, Validation
+    PredVertebra, PredSeverity, Validation, RunAssignment
 )
 from validation.enums.vertebra_name import VertebraName
 from validation.enums.severity import Severity
@@ -88,6 +88,21 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Created run for exam: {exam.external_id}'))
             else:
                 self.stdout.write(f'Using existing run for exam: {exam.external_id}')
+        
+        # Create run assignments for the user
+        for run in runs:
+            assignment, created = RunAssignment.objects.get_or_create(
+                run=run,
+                user=user,
+                defaults={
+                    'assigned_by': user,  # For demo, user assigns to themselves
+                    'notes': f'Sample assignment for run {run.id}'
+                }
+            )
+            if created:
+                self.stdout.write(self.style.SUCCESS(f'Created assignment: Run {run.id} → {user.email}'))
+            else:
+                self.stdout.write(f'Using existing assignment: Run {run.id} → {user.email}')
         
         # For each run, create vertebrae predictions with polygons
         vertebra_choices = list(VertebraName.choices)

@@ -17,9 +17,14 @@
       {% if user.is_authenticated %}
         <p class="mb-4">Hello, {{ user.full_name }}!</p>
         <div class="mb-6 space-y-4">
-          <a href="{% url 'validation:exam_list' %}" class="block text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600">
-            Go to Validation Interface
+          <a href="{% url 'validation:run_assignment_list' %}" class="block text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600">
+            View My Assignments
           </a>
+          {% if user.is_superuser %}
+          <a href="{% url 'validation:exam_list' %}" class="block text-white bg-purple-500 px-4 py-2 rounded hover:bg-purple-600">
+            Admin: View All Exams
+          </a>
+          {% endif %}
         </div>
         <form method="post" action="{% url 'users:logout' %}" class="inline">
           {% csrf_token %}

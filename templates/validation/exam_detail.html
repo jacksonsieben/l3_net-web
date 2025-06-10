@@ -77,10 +77,10 @@ Validation{% endblock %} {% block extra_head %}
       Exam: {{ exam.external_id }}
     </h1>
     <a
-      href="{% url 'validation:exam_list' %}"
+      href="{% url 'validation:run_assignment_list' %}"
       class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition"
     >
-      Back to List
+      Back to Assignments
     </a>
   </div>
 
@@ -176,8 +176,30 @@ Validation{% endblock %} {% block extra_head %}
               <span class="font-medium">Run Date:</span> {{ run.run_date|date:"F j, Y H:i" }}
             </p>
           </div>
-
           
+          {% if validation_progress %}
+          <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-800 mb-2">Validation Progress</h4>
+            <div class="flex items-center mb-2">
+              <div class="flex-1 bg-gray-200 rounded-full h-2">
+                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ validation_progress.percentage_complete }}%"></div>
+              </div>
+              <span class="ml-2 text-sm font-medium text-blue-800">{{ validation_progress.percentage_complete }}%</span>
+            </div>
+            <p class="text-xs text-blue-700">
+              {{ validation_progress.validated_predictions }}/{{ validation_progress.total_predictions }} predictions validated
+            </p>
+            {% if validation_progress.is_complete %}
+              <span class="inline-block mt-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                ✓ Complete
+              </span>
+            {% else %}
+              <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                {{ validation_progress.remaining_predictions }} remaining
+              </span>
+            {% endif %}
+          </div>
+          {% endif %}
 
           <div class="mb-4">
             <h4 class="text-lg font-medium mb-2">Predictions</h4>

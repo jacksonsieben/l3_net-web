@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}My Assigned Runs - L3Net Validation{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-blue-600">
+      {% if showing_all_users %}
+        All Run Assignments
+      {% else %}
+        My Assigned Runs
+      {% endif %}
+    </h1>
+    
+    {% if user.is_superuser %}
+    <div class="flex gap-2">
+      <a href="{% url 'validation:exam_list' %}" 
+         class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition">
+        View All Exams
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Statistics Summary -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-blue-100 rounded-lg">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Total Assignments</p>
+          <p class="text-2xl font-bold text-gray-900">{{ total_assignments }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-green-100 rounded-lg">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Completed</p>
+          <p class="text-2xl font-bold text-gray-900">{{ completed_assignments }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-yellow-100 rounded-lg">
+          <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Pending</p>
+          <p class="text-2xl font-bold text-gray-900">{{ pending_assignments }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center">
+        <div class="p-2 bg-purple-100 rounded-lg">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Progress</p>
+          <p class="text-2xl font-bold text-gray-900">{{ completion_percentage }}%</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  {% if total_assignments > 0 %}
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h3 class="text-lg font-medium text-gray-900 mb-3">Overall Progress</h3>
+    <div class="w-full bg-gray-200 rounded-full h-3">
+      <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: {{ completion_percentage }}%"></div>
+    </div>
+    <p class="text-sm text-gray-600 mt-2">{{ completed_assignments }} of {{ total_assignments }} assignments completed</p>
+  </div>
+  {% endif %}
+
+  <!-- Assignments List -->
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-lg font-medium text-gray-900">Run Assignments</h3>
+    </div>
+    
+    {% if assignments %}
+    <div class="divide-y divide-gray-200">
+      {% for assignment in assignments %}
+      <div class="p-6 hover:bg-gray-50 transition-colors">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <div class="flex items-center space-x-4">
+              <div class="flex-shrink-0">
+                {% if assignment.is_completed %}
+                  <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                {% else %}
+                  <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                {% endif %}
+              </div>
+              
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center space-x-2">
+                  <h4 class="text-lg font-medium text-gray-900">
+                    Exam: {{ assignment.run.exam_id.external_id }}
+                  </h4>
+                  {% if assignment.is_completed %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Completed
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Pending
+                    </span>
+                  {% endif %}
+                </div>
+                
+                <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                  <span>Run ID: {{ assignment.run.id }}</span>
+                  <span>•</span>
+                  <span>Assigned: {{ assignment.assigned_at|date:"M j, Y" }}</span>
+                  {% if showing_all_users %}
+                    <span>•</span>
+                    <span>User: {{ assignment.user.email }}</span>
+                  {% endif %}
+                  {% if assignment.assigned_by %}
+                    <span>•</span>
+                    <span>By: {{ assignment.assigned_by.email }}</span>
+                  {% endif %}
+                </div>
+                
+                {% if assignment.notes %}
+                <p class="mt-2 text-sm text-gray-600">{{ assignment.notes }}</p>
+                {% endif %}
+                
+                {% if assignment.completed_at %}
+                <p class="mt-1 text-sm text-green-600">
+                  <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Completed on {{ assignment.completed_at|date:"M j, Y \a\t H:i" }}
+                </p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex-shrink-0 ml-4">
+            <a href="{% url 'validation:exam_detail' assignment.run.exam_id.id %}" 
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              {% if assignment.is_completed %}
+                Review
+              {% else %}
+                Start Validation
+              {% endif %}
+              <svg class="ml-2 -mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-12 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No assignments</h3>
+      <p class="mt-1 text-sm text-gray-500">
+        {% if showing_all_users %}
+          No run assignments have been created yet.
+        {% else %}
+          You don't have any run assignments yet. Contact your administrator.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -7,6 +7,9 @@ from django.contrib import messages
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.utils.decorators import method_decorator
+from django.http import Http404
 
 User = get_user_model()
 
@@ -18,6 +21,12 @@ class CustomUserCreationForm(UserCreationForm):
         model = User
         fields = ['email', 'full_name']  # Including the full_name field
 
+def is_superuser(user):
+    """Check if user is superuser"""
+    return user.is_superuser
+
+@method_decorator(login_required, name='dispatch')
+@method_decorator(user_passes_test(is_superuser), name='dispatch')
 class RegisterView(View):
     template_name = 'users/register.html'
     form_class = CustomUserCreationForm
@@ -30,9 +39,9 @@ class RegisterView(View):
         form = self.form_class(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)  # Automatically log in after registration
-            messages.success(request, "Account created successfully!")
-            return redirect('home')  # Redirect to the root URL (home page)
+            # Don't automatically log in the created user since admin is creating it
+            messages.success(request, f"Account for {user.email} created successfully!")
+            return redirect('users:register')  # Stay on registration page for creating more users
         else:
             # Clear any existing messages to avoid duplicates
             storage = messages.get_messages(request)

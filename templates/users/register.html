@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>L3Net – Register</title>
+  <title>L3Net – Admin: Create User</title>
   <script src="https://cdn.tailwindcss.com"></script>
   {% load widget_tweaks %}
   <style>
@@ -26,7 +26,7 @@
   <div id="toast-container" class="fixed top-4 right-4 z-[1000] transition-all duration-300 flex flex-col gap-2 w-full max-w-md"></div>
   
   <div class="bg-white p-10 rounded-xl shadow-md w-full max-w-md">
-    <h2 class="text-3xl font-bold text-violet-600 mb-6 text-center">Create an Account</h2>
+    <h2 class="text-3xl font-bold text-violet-600 mb-6 text-center">Create New User Account</h2>
     <form method="post">
       {% csrf_token %}
       
@@ -160,10 +160,10 @@
         Register
       </button>
     </form>
-    <p class="mt-4 text-sm text-center text-gray-600">
-      Already have an account?
-      <a href="{% url 'users:login' %}" class="text-blue-500 hover:underline">Log in here</a>
-    </p>
+    <div class="mt-4 text-sm text-center text-gray-600">
+      <p class="mb-2">Admin panel - Create user accounts</p>
+      <a href="{% url 'home' %}" class="text-blue-500 hover:underline">Back to Home</a>
+    </div>
   </div>
   
   <!-- JavaScript for real-time password validation -->

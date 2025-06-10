@@ -34,6 +34,13 @@
             "problemMatcher": []
         },
         {
+            "label": "Django: Seed Sample Data",
+            "type": "shell",
+            "command": "${workspaceFolder}/venv/bin/python",
+            "args": ["manage.py", "create_sample_data", "--force"],
+            "problemMatcher": []
+        },
+        {
             "label": "Django: Migrate",
             "type": "shell",
             "command": "${workspaceFolder}/venv/bin/python",
@@ -87,6 +94,43 @@
                 "reveal": "always",
                 "panel": "new"
             },
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker Compose Down",
+            "type": "shell",
+            "command": "docker",
+            "args": ["compose", "down", "-v"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker Compose Up",
+            "type": "shell",
+            "command": "docker",
+            "args": ["compose", "up", "-d"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker sleep",
+            "type": "shell",
+            "command": "sleep",
+            "args": ["5"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Docker Compose Restart",
+            "dependsOn": ["Docker Compose Down", "Docker Compose Up", "Docker sleep"],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Django Setup",
+            "dependsOn": [
+                "Docker Compose Restart",
+                "Django: Make Migrations",
+                "Django: Migrate"
+            ],
+            "dependsOrder": "sequence",
             "problemMatcher": []
         }
     ]

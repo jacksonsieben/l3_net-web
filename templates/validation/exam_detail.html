@@ -1,0 +1,568 @@
+{% extends "base.html" %} {% block title %}Exam {{ exam.external_id }} - L3Net
+Validation{% endblock %} {% block extra_head %}
+<style>
+  .bounding-box {
+    position: absolute;
+    border: 2px solid;
+    pointer-events: all;
+    cursor: pointer;
+    transition: opacity 0.2s ease-in-out;
+  }
+  .vertebra-box {
+    border-color: blue;
+    background-color: rgba(0, 0, 255, 0.1);
+  }
+  .severity-normal-mild {
+    border-color: green;
+    background-color: rgba(0, 255, 0, 0.1);
+  }
+  .severity-moderate {
+    border-color: orange;
+    background-color: rgba(255, 165, 0, 0.1);
+  }
+  .severity-severe {
+    border-color: red;
+    background-color: rgba(255, 0, 0, 0.1);
+  }
+  .vertebra-box {
+    border-color: blue;
+    background-color: rgba(0, 0, 255, 0.1);
+  }
+  .selected-box {
+    border-width: 3px;
+    opacity: 0.9 !important;
+  }
+  #image-container {
+    position: relative;
+    overflow: auto;
+    height: 600px;
+    cursor: crosshair;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #d1d5db;
+  }
+  #annotation-image {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+  .annotation-controls {
+    position: sticky;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-top: 1px solid #e5e7eb;
+    padding: 1rem;
+    z-index: 10;
+  }
+  .tooltip {
+    position: absolute;
+    padding: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    z-index: 20;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container mx-auto px-4 py-6">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-blue-600">
+      Exam: {{ exam.external_id }}
+    </h1>
+    <a
+      href="{% url 'validation:exam_list' %}"
+      class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition"
+    >
+      Back to List
+    </a>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="flex flex-col lg:flex-row">
+      <!-- Left Panel: Image Display with Annotations -->
+      <div class="w-full lg:w-3/4 lg:pr-6">
+        <div id="image-container" class="border border-gray-300 rounded">
+          {% if exam.image_path %}
+          <img
+            id="annotation-image"
+            src="{{ exam.image_path }}"
+            alt="Medical Image"
+          />
+          
+        {% else %}
+          <div
+            class="flex items-center justify-center h-64 bg-gray-100 text-gray-500"
+          >
+            <p>No image available</p>
+          </div>
+          {% endif %}
+          <div id="boxes-container"></div>
+        </div>
+
+        <div class="annotation-controls flex flex-wrap gap-3">
+          <div>
+            <label class="mr-2 font-medium">Zoom:</label>
+            <button
+              id="zoom-in"
+              class="bg-blue-500 text-white px-3 py-1 rounded"
+            >
+              +
+            </button>
+            <button
+              id="zoom-reset"
+              class="bg-gray-300 text-gray-800 px-3 py-1 rounded"
+            >
+              Reset
+            </button>
+            <button
+              id="zoom-out"
+              class="bg-blue-500 text-white px-3 py-1 rounded"
+            >
+              -
+            </button>
+          </div>
+
+          <div>
+            <label class="mr-2 font-medium">Show:</label>
+            <label class="inline-flex items-center">
+              <input
+                type="checkbox"
+                id="show-vertebrae"
+                class="form-checkbox"
+              />
+              <span class="ml-1">Vertebrae</span>
+            </label>
+            <label class="inline-flex items-center ml-3">
+              <input
+                type="checkbox"
+                id="show-severity"
+                class="form-checkbox"
+                checked
+              />
+              <span class="ml-1">Severity</span>
+            </label>
+          </div>
+
+          <div>
+            <label class="mr-2 font-medium">Opacity:</label>
+            <input
+              type="range"
+              id="box-opacity"
+              min="0"
+              max="1"
+              step="0.1"
+              value="0.5"
+              class="w-32"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Prediction Details -->
+      <div class="w-full lg:w-1/4 mt-6 lg:mt-0">
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h3 class="text-xl font-semibold mb-4">Prediction Details</h3>
+
+          {% if run %}
+          <div class="mb-4">
+            <p>
+              <span class="font-medium">Run Date:</span> {{ run.run_date|date:"F j, Y H:i" }}
+            </p>
+          </div>
+
+          
+
+          <div class="mb-4">
+            <h4 class="text-lg font-medium mb-2">Predictions</h4>
+            <ul class="space-y-2" id="prediction-list">
+              {% for prediction in severity_predictions %}
+              <li
+                class="text-sm p-2 rounded hover:bg-white cursor-pointer prediction-item"
+                data-severity="{{ prediction.severity_name }}"
+                data-confidence="{{ prediction.confidence|floatformat:2 }}"
+                data-x1="{{ prediction.bounding_box.x1 }}"
+                data-y1="{{ prediction.bounding_box.y1 }}"
+                data-x2="{{ prediction.bounding_box.x2 }}"
+                data-y2="{{ prediction.bounding_box.y2 }}"
+              >
+                
+                <div>
+                  <span class="font-medium">Severity:</span> 
+                  {{ prediction.severity_name }}
+                </div>
+                <div>
+                  <span class="font-medium">Confidence:</span> 
+                  {{ prediction.confidence|floatformat:2 }}%
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% else %}
+          <p class="text-gray-600">
+            No prediction data available for this exam.
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      const imageContainer = document.getElementById('image-container');
+      const annotationImage = document.getElementById('annotation-image');
+      const boxesContainer = document.getElementById('boxes-container');
+      const zoomIn = document.getElementById('zoom-in');
+      const zoomOut = document.getElementById('zoom-out');
+      const zoomReset = document.getElementById('zoom-reset');
+      const boxOpacity = document.getElementById('box-opacity');
+      const showVertebraeCheckbox = document.getElementById('show-vertebrae');
+      const showSeverityCheckbox = document.getElementById('show-severity');
+      const predictionList = document.getElementById('prediction-list');
+      const selectionDetails = document.getElementById('selection-details');
+      const selectedVertebra = document.getElementById('selected-vertebra');
+      const selectedSeverity = document.getElementById('selected-severity');
+      const selectedConfidence = document.getElementById('selected-confidence');
+
+      let scale = 1;
+      const maxScale = 3;
+      const minScale = 0.5;
+      const scaleStep = 0.1;
+
+      // Set image container to position relative for proper box positioning
+      if (imageContainer) {
+          imageContainer.style.position = 'relative';
+      }
+
+      // Load predictions from the template context
+      const severityPredictions = [
+          {% for prediction in severity_predictions %}
+          {
+              type: 'severity',
+              vertebra_name: "{{ prediction.vertebra_name|default:'' }}",
+              severity_name: "{{ prediction.severity_name }}",
+              confidence: {{ prediction.confidence }},
+              bounding_box: {
+                  x1: {{ prediction.bounding_box.x1 }},
+                  y1: {{ prediction.bounding_box.y1 }},
+                  x2: {{ prediction.bounding_box.x2 }},
+                  y2: {{ prediction.bounding_box.y2 }},
+              }
+          },
+          {% endfor %}
+      ];
+
+      const vertebraePredictions = [
+          {% for prediction in vertebrae_predictions %}
+          {
+              type: 'vertebra',
+              vertebra_name: "{{ prediction.vertebra_name }}",
+              confidence: {{ prediction.confidence }},
+              polygon: {
+                  x1: {{ prediction.polygon.x1 }},
+                  y1: {{ prediction.polygon.y1 }},
+                  x2: {{ prediction.polygon.x2 }},
+                  y2: {{ prediction.polygon.y2 }},
+              }
+          },
+          {% endfor %}
+      ];
+
+      // Initialize image properly
+      if (annotationImage) {
+          // Reset any transform that might be applied
+          annotationImage.style.transform = 'none';
+          
+          // Draw bounding boxes once the image is loaded
+          annotationImage.onload = function() {
+              fitImageToContainer();
+              renderBoxes();
+          };
+
+          // If image is already loaded (from cache), initialize immediately
+          if (annotationImage.complete) {
+              fitImageToContainer();
+              renderBoxes();
+          }
+      }
+      
+      // Function to ensure image fits inside the container
+      function fitImageToContainer() {
+          if (!annotationImage) return;
+          
+          // Reset to default CSS sizing (max-width: 100%, max-height: 100%)
+          annotationImage.style.transform = 'none';
+          scale = 1;
+          
+          // Re-render boxes after a short delay to allow CSS to apply
+          setTimeout(() => renderBoxes(), 50);
+      }
+
+      function renderBoxes() {
+          // Clear existing boxes
+          boxesContainer.innerHTML = '';
+
+          if (!annotationImage || !annotationImage.naturalWidth || !annotationImage.naturalHeight) {
+              return; // Image not loaded yet
+          }
+
+          // Get the image's bounding rectangle
+          const imageRect = annotationImage.getBoundingClientRect();
+          const containerRect = imageContainer.getBoundingClientRect();
+          
+          // Calculate the actual displayed size of the image (considering CSS scaling and transform)
+          const currentImageWidth = imageRect.width;
+          const currentImageHeight = imageRect.height;
+          
+          // Get the position of the image relative to the container
+          const imageLeft = imageRect.left - containerRect.left;
+          const imageTop = imageRect.top - containerRect.top;
+
+          // Render severity predictions if enabled
+          if (showSeverityCheckbox.checked) {
+              severityPredictions.forEach((prediction, index) => {
+                  // Create box element
+                  const box = document.createElement('div');
+                  box.className = 'bounding-box';
+
+                  // Determine class based on severity
+                  const severityClass = prediction.severity_name.toLowerCase().replace('/', '-');
+                  box.classList.add(`severity-${severityClass}`);
+
+                  // Calculate bounding box position and size based on the current displayed image size
+                  // The prediction coordinates are normalized (0-1), so we multiply by current display size
+                  const boxLeft = prediction.bounding_box.x1 * currentImageWidth;
+                  const boxTop = prediction.bounding_box.y1 * currentImageHeight;
+                  const boxWidth = (prediction.bounding_box.x2 - prediction.bounding_box.x1) * currentImageWidth;
+                  const boxHeight = (prediction.bounding_box.y2 - prediction.bounding_box.y1) * currentImageHeight;
+
+                  // Position the box relative to the container, accounting for image position
+                  box.style.left = `${imageLeft + boxLeft}px`;
+                  box.style.top = `${imageTop + boxTop}px`;
+                  box.style.width = `${boxWidth}px`;
+                  box.style.height = `${boxHeight}px`;
+                  box.style.opacity = boxOpacity.value;
+
+                  // Store prediction data
+                  box.dataset.index = index;
+                  box.dataset.type = 'severity';
+                  box.dataset.vertebra = prediction.vertebra_name;
+                  box.dataset.severity = prediction.severity_name;
+                  box.dataset.confidence = prediction.confidence.toFixed(2);
+
+                  // Add event listeners
+                  box.addEventListener('click', handleBoxClick);
+                  box.addEventListener('mouseover', handleBoxHover);
+                  box.addEventListener('mouseout', handleBoxHoverEnd);
+
+                  // Add to container
+                  boxesContainer.appendChild(box);
+              });
+          }
+
+          // Render vertebrae predictions if enabled
+          if (showVertebraeCheckbox.checked) {
+              vertebraePredictions.forEach((prediction, index) => {
+                  // Create box element
+                  const box = document.createElement('div');
+                  box.className = 'bounding-box vertebra-box';
+
+                  // Calculate bounding box position and size based on the current displayed image size
+                  // The prediction coordinates are normalized (0-1), so we multiply by current display size
+                  const boxLeft = prediction.polygon.x1 * currentImageWidth;
+                  const boxTop = prediction.polygon.y1 * currentImageHeight;
+                  const boxWidth = (prediction.polygon.x2 - prediction.polygon.x1) * currentImageWidth;
+                  const boxHeight = (prediction.polygon.y2 - prediction.polygon.y1) * currentImageHeight;
+
+                  // Position the box relative to the container, accounting for image position
+                  box.style.left = `${imageLeft + boxLeft}px`;
+                  box.style.top = `${imageTop + boxTop}px`;
+                  box.style.width = `${boxWidth}px`;
+                  box.style.height = `${boxHeight}px`;
+                  box.style.opacity = boxOpacity.value;
+
+                  // Store prediction data
+                  box.dataset.index = index;
+                  box.dataset.type = 'vertebra';
+                  box.dataset.vertebra = prediction.vertebra_name;
+                  box.dataset.severity = '';
+                  box.dataset.confidence = prediction.confidence.toFixed(2);
+
+                  // Add event listeners
+                  box.addEventListener('click', handleBoxClick);
+                  box.addEventListener('mouseover', handleBoxHover);
+                  box.addEventListener('mouseout', handleBoxHoverEnd);
+
+                  // Add to container
+                  boxesContainer.appendChild(box);
+              });
+          }
+      }
+
+      function handleBoxClick(e) {
+          e.stopPropagation();
+
+          // Remove selected class from all boxes
+          document.querySelectorAll('.bounding-box').forEach(box => {
+              box.classList.remove('selected-box');
+          });
+
+          // Add selected class to this box
+          e.target.classList.add('selected-box');
+
+          // Update selection details panel
+          selectedVertebra.textContent = e.target.dataset.vertebra;
+          selectedSeverity.textContent = e.target.dataset.severity;
+          selectedConfidence.textContent = e.target.dataset.confidence;
+          selectionDetails.classList.remove('hidden');
+
+          // Highlight corresponding item in prediction list
+          document.querySelectorAll('.prediction-item').forEach(item => {
+              item.classList.remove('bg-blue-50');
+              if (item.dataset.vertebra === e.target.dataset.vertebra &&
+                  item.dataset.severity === e.target.dataset.severity) {
+                  item.classList.add('bg-blue-50');
+                  item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+          });
+      }
+
+      // Tooltip functionality
+      function handleBoxHover(e) {
+          const box = e.target;
+
+          // Create tooltip
+          const tooltip = document.createElement('div');
+          tooltip.className = 'tooltip';
+          
+          if (box.dataset.type === 'vertebra') {
+              tooltip.innerHTML = `
+                  <div><strong>Vertebra:</strong> ${box.dataset.vertebra}</div>
+                  <div><strong>Confidence:</strong> ${box.dataset.confidence}%</div>
+              `;
+          } else {
+              tooltip.innerHTML = `
+                  <div><strong>Vertebra:</strong> ${box.dataset.vertebra}</div>
+                  <div><strong>Severity:</strong> ${box.dataset.severity}</div>
+                  <div><strong>Confidence:</strong> ${box.dataset.confidence}%</div>
+              `;
+          }
+
+          // Position tooltip
+          const rect = box.getBoundingClientRect();
+          const containerRect = imageContainer.getBoundingClientRect();
+          tooltip.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
+          tooltip.style.top = `${rect.top - containerRect.top - tooltip.offsetHeight - 5}px`;
+
+          // Add tooltip to container
+          imageContainer.appendChild(tooltip);
+          box.tooltip = tooltip;
+      }
+
+      function handleBoxHoverEnd(e) {
+          if (e.target.tooltip) {
+              e.target.tooltip.remove();
+              e.target.tooltip = null;
+          }
+      }
+
+      // Zoom functionality
+      if (zoomIn) {
+          zoomIn.addEventListener('click', () => {
+              if (scale < maxScale) {
+                  scale += scaleStep;
+                  updateZoom();
+              }
+          });
+      }
+
+      if (zoomOut) {
+          zoomOut.addEventListener('click', () => {
+              if (scale > minScale) {
+                  scale -= scaleStep;
+                  updateZoom();
+              }
+          });
+      }
+
+      if (zoomReset) {
+          zoomReset.addEventListener('click', () => {
+              fitImageToContainer(); // Reset to fitted size instead of scale = 1
+          });
+      }
+
+      function updateZoom() {
+          if (annotationImage) {
+              annotationImage.style.transform = `scale(${scale})`;
+              annotationImage.style.transformOrigin = 'center center';
+              // Re-render boxes to match new scale after a short delay to ensure image is scaled
+              setTimeout(() => renderBoxes(), 10);
+          }
+      }
+
+      // Opacity control
+      if (boxOpacity) {
+          boxOpacity.addEventListener('input', () => {
+              document.querySelectorAll('.bounding-box').forEach(box => {
+                  box.style.opacity = boxOpacity.value;
+              });
+          });
+      }
+
+      // Show/hide controls
+      if (showVertebraeCheckbox) {
+          showVertebraeCheckbox.addEventListener('change', updateVisibility);
+      }
+
+      if (showSeverityCheckbox) {
+          showSeverityCheckbox.addEventListener('change', updateVisibility);
+      }
+
+      function updateVisibility() {
+          // Simply re-render all boxes based on current checkbox states
+          renderBoxes();
+      }
+
+      // Prediction list item click
+      if (predictionList) {
+          document.querySelectorAll('.prediction-item').forEach(item => {
+              item.addEventListener('click', function() {
+                  // Highlight this item
+                  document.querySelectorAll('.prediction-item').forEach(i => {
+                      i.classList.remove('bg-blue-50');
+                  });
+                  this.classList.add('bg-blue-50');
+
+                  // Find and highlight corresponding box
+                  const boxes = document.querySelectorAll('.bounding-box');
+                  boxes.forEach(box => {
+                      box.classList.remove('selected-box');
+                      if (box.dataset.vertebra === this.dataset.vertebra &&
+                          box.dataset.severity === this.dataset.severity) {
+                          box.classList.add('selected-box');
+
+                          // Scroll to make the box visible
+                          box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                  });
+
+                  // Update selection details panel
+                  selectedVertebra.textContent = this.dataset.vertebra;
+                  selectedSeverity.textContent = this.dataset.severity;
+                  selectedConfidence.textContent = this.dataset.confidence;
+                  selectionDetails.classList.remove('hidden');
+              });
+          });
+      }
+  });
+</script>
+{% endblock %}

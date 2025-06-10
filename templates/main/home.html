@@ -16,6 +16,11 @@
       <h1 class="text-3xl font-bold mb-4 text-blue-600">Welcome to L3Net</h1>
       {% if user.is_authenticated %}
         <p class="mb-4">Hello, {{ user.full_name }}!</p>
+        <div class="mb-6 space-y-4">
+          <a href="{% url 'validation:exam_list' %}" class="block text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600">
+            Go to Validation Interface
+          </a>
+        </div>
         <form method="post" action="{% url 'users:logout' %}" class="inline">
           {% csrf_token %}
           <button type="submit" class="text-white bg-red-500 px-4 py-2 rounded hover:bg-red-600">
@@ -28,9 +33,7 @@
           <a href="{% url 'users:login' %}" class="text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600">
             Login
           </a>
-          <a href="{% url 'users:register' %}" class="text-white bg-green-500 px-4 py-2 rounded hover:bg-green-600">
-            Register
-          </a>
+          
         </div>
       {% endif %}
     </div>

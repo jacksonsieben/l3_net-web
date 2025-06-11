@@ -214,7 +214,10 @@ Validation{% endblock %} {% block extra_head %}
                 data-x2="{{ prediction.bounding_box.x2 }}"
                 data-y2="{{ prediction.bounding_box.y2 }}"
               >
-                
+                <div>
+                  <span class="font-medium">ID:</span> 
+                  {{ prediction.id }}
+                </div>
                 <div>
                   <span class="font-medium">Severity:</span> 
                   {{ prediction.severity_name }}

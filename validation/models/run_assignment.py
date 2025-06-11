@@ -78,7 +78,7 @@ class RunAssignment(models.Model):
         # Get all severity predictions for this run
         total_predictions = self.run.predicted_severities.count()
         
-        # Count how many have been validated
+        # Count how many have been validated by this user
         validated_predictions = self.run.predicted_severities.filter(
             validations__user_id=self.user
         ).distinct().count()
@@ -95,6 +95,10 @@ class RunAssignment(models.Model):
             'percentage_complete': round(percentage, 1),
             'is_complete': validated_predictions >= total_predictions and total_predictions > 0
         }
+    
+    def get_assigned_exams(self):
+        """Return all exams that are part of this assigned run"""
+        return self.run.exams.all()
     
     def update_completion_status(self):
         """

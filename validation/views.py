@@ -21,17 +21,17 @@ class RunAssignmentListView(LoginRequiredMixin, ListView):
     login_url = '/users/login/'
     
     def get_queryset(self):
+        # Superusers can see all assignments
         if self.request.user.is_superuser:
-            # Superusers can see all assignments
             return RunAssignment.objects.all().select_related(
-                'run__exam_id', 'user', 'assigned_by'
+                'run', 'user', 'assigned_by'
             ).order_by('-assigned_at')
         else:
             # Regular users only see their own assignments
             return RunAssignment.objects.filter(
                 user=self.request.user
             ).select_related(
-                'run__exam_id', 'assigned_by'
+                'run', 'assigned_by'
             ).order_by('-assigned_at')
     
     def get_context_data(self, **kwargs):
@@ -69,17 +69,53 @@ class ExamListView(LoginRequiredMixin, ListView):
     login_url = '/users/login/'
     
     def get_queryset(self):
+        # Check if filtering by run
+        run_id = self.request.GET.get('run')
+        
         # Superusers can see all exams
         if self.request.user.is_superuser:
-            return Exam.objects.all().order_by('-created_at')
+            queryset = Exam.objects.all().order_by('-created_at')
+            if run_id:
+                # Filter by specific run
+                queryset = queryset.filter(runs__id=run_id)
+            return queryset
         
         # Regular users only see exams that have runs assigned to them
-        assigned_runs = RunAssignment.objects.filter(user=self.request.user).select_related('run__exam_id')
-        exam_ids = [assignment.run.exam_id.id for assignment in assigned_runs]
-        return Exam.objects.filter(id__in=exam_ids).order_by('-created_at')
+        assigned_runs = RunAssignment.objects.filter(user=self.request.user).select_related('run')
+        exam_ids = []
+        for assignment in assigned_runs:
+            exam_ids.extend(list(assignment.run.exams.values_list('id', flat=True)))
+        
+        queryset = Exam.objects.filter(id__in=exam_ids).order_by('-created_at')
+        
+        if run_id:
+            # Filter by specific run (only if user has access to that run)
+            user_run_ids = [assignment.run.id for assignment in assigned_runs]
+            if int(run_id) in user_run_ids:
+                queryset = queryset.filter(runs__id=run_id)
+            else:
+                # User doesn't have access to this run, return empty queryset
+                queryset = Exam.objects.none()
+                
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        # Check if filtering by run
+        run_id = self.request.GET.get('run')
+        context['filtered_run'] = None
+        
+        if run_id:
+            try:
+                run = Run.objects.get(id=run_id)
+                # Check if user has access to this run
+                if self.request.user.is_superuser or RunAssignment.objects.filter(
+                    user=self.request.user, run=run
+                ).exists():
+                    context['filtered_run'] = run
+            except Run.DoesNotExist:
+                pass
         
         # Add assignment information for each exam
         exam_assignments = {}
@@ -87,7 +123,7 @@ class ExamListView(LoginRequiredMixin, ListView):
             if self.request.user.is_superuser:
                 # For superusers, show all assignments for this exam
                 assignments = RunAssignment.objects.filter(
-                    run__exam_id=exam
+                    run__exams=exam
                 ).select_related('run', 'user')
                 
                 exam_assignments[exam.id] = {
@@ -100,7 +136,7 @@ class ExamListView(LoginRequiredMixin, ListView):
                 # For regular users, show only their assignments
                 assignments = RunAssignment.objects.filter(
                     user=self.request.user,
-                    run__exam_id=exam
+                    run__exams=exam
                 ).select_related('run')
                 
                 exam_assignments[exam.id] = {
@@ -132,7 +168,7 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
         # Check if user has any run assignments for this exam
         has_assignment = RunAssignment.objects.filter(
             user=self.request.user,
-            run__exam_id=exam
+            run__exams=exam
         ).exists()
         
         if not has_assignment:
@@ -146,12 +182,12 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
         # Get runs assigned to this user for this exam
         user_assignments = RunAssignment.objects.filter(
             user=self.request.user,
-            run__exam_id=self.object
+            run__exams=self.object
         ).select_related('run').order_by('-run__run_date')
         
         # For superusers, if they don't have assignments, get the latest run
         if self.request.user.is_superuser and not user_assignments.exists():
-            latest_run = Run.objects.filter(exam_id=self.object).order_by('-run_date').first()
+            latest_run = Run.objects.filter(exams=self.object).order_by('-run_date').first()
             if latest_run:
                 # Create a mock assignment context for display
                 class MockAssignment:

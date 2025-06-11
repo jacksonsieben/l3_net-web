@@ -2,11 +2,34 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-  {% if is_superuser %}
-    <h1 class="text-3xl font-bold text-blue-600 mb-6">All Exams (Admin View)</h1>
-  {% else %}
-    <h1 class="text-3xl font-bold text-blue-600 mb-6">Assigned Exams for Validation</h1>
-  {% endif %}
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      {% if filtered_run %}
+        <h1 class="text-3xl font-bold text-blue-600">
+          Exams in Run: {{ filtered_run.name }}
+        </h1>
+        <p class="text-gray-600 mt-1">{{ filtered_run.description|default:"" }}</p>
+      {% elif is_superuser %}
+        <h1 class="text-3xl font-bold text-blue-600">All Exams (Admin View)</h1>
+      {% else %}
+        <h1 class="text-3xl font-bold text-blue-600">Assigned Exams for Validation</h1>
+      {% endif %}
+    </div>
+    
+    <div class="flex gap-2">
+      {% if filtered_run %}
+        <a href="{% url 'validation:exam_list' %}" 
+           class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition">
+          Show All Exams
+        </a>
+      {% endif %}
+      
+      <a href="{% url 'validation:run_assignment_list' %}" 
+         class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition">
+        Back to Assignments
+      </a>
+    </div>
+  </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for exam in exams %}
@@ -14,6 +37,9 @@
       class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
     >
       <div class="p-6">
+        <h2 class="text-xl font-semibold mb-2">
+          Run ID: {{ exam.run_id }}
+        </h2>
         <h2 class="text-xl font-semibold mb-2">
           Exam ID: {{ exam.external_id }}
         </h2>

@@ -24,6 +24,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),
     path('validation/', include('validation.urls')),
+    path('api/', include('validation.api_urls')),
+    path('api-auth/', include('rest_framework.urls')),  # For browsable API authentication
     path('', main_views.home, name='home'),
 ]
 

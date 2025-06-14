@@ -58,6 +58,26 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Error creating user: {str(e)}'))
             return
         
+        try:
+            user, created = CustomUser.objects.get_or_create(
+                email='admin@email.com',
+                defaults={
+                    'full_name': 'Test User',
+                    'is_active': True,
+                    'is_staff': True,
+                    'is_superuser': True,
+                }
+            )
+            if created:
+                user.set_password('password123')
+                user.save()
+                self.stdout.write(self.style.SUCCESS(f'Created test user: {user.email}'))
+            else:
+                self.stdout.write(f'Using existing user: {user.email}')
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error creating user: {str(e)}'))
+            return
+        
         # Create sample model versions
         model_versions = []
         for i in range(1, 3):

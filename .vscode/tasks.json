@@ -128,7 +128,7 @@
             "dependsOn": [
                 "Docker Compose Restart",
                 "Django: Make Migrations",
-                "Django: Migrate"
+                "Django: Migrate",
             ],
             "dependsOrder": "sequence",
             "problemMatcher": []

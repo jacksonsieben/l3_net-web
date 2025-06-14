@@ -1,8 +1,13 @@
 from django.shortcuts import render, get_object_or_404
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, CreateView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, Http404
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
+from django.urls import reverse_lazy
+from django.contrib.auth import get_user_model
+from django import forms
 
 from .models.exam import Exam
 from .models.run import Run
@@ -11,6 +16,8 @@ from .models.pred_severity import PredSeverity
 from .models.pred_vertebra import PredVertebra
 from .models.model_version import ModelVersion
 from .models.run_assignment import RunAssignment
+
+User = get_user_model()
 
 # Create your views here.
 class RunAssignmentListView(LoginRequiredMixin, ListView):
@@ -27,11 +34,13 @@ class RunAssignmentListView(LoginRequiredMixin, ListView):
                 'run', 'user', 'assigned_by'
             ).order_by('-assigned_at')
         else:
+            print("User is not a superuser, filtering assignments")
+            print(self.request.user)
             # Regular users only see their own assignments
             return RunAssignment.objects.filter(
                 user=self.request.user
             ).select_related(
-                'run', 'assigned_by'
+                'run'
             ).order_by('-assigned_at')
     
     def get_context_data(self, **kwargs):
@@ -74,7 +83,7 @@ class ExamListView(LoginRequiredMixin, ListView):
         
         # Superusers can see all exams
         if self.request.user.is_superuser:
-            queryset = Exam.objects.all().order_by('-created_at')
+            queryset = Exam.objects.prefetch_related('runs').order_by('-created_at')
             if run_id:
                 # Filter by specific run
                 queryset = queryset.filter(runs__id=run_id)
@@ -86,7 +95,7 @@ class ExamListView(LoginRequiredMixin, ListView):
         for assignment in assigned_runs:
             exam_ids.extend(list(assignment.run.exams.values_list('id', flat=True)))
         
-        queryset = Exam.objects.filter(id__in=exam_ids).order_by('-created_at')
+        queryset = Exam.objects.filter(id__in=exam_ids).prefetch_related('runs').order_by('-created_at')
         
         if run_id:
             # Filter by specific run (only if user has access to that run)
@@ -179,17 +188,31 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Get runs assigned to this user for this exam
-        user_assignments = RunAssignment.objects.filter(
-            user=self.request.user,
-            run__exams=self.object
-        ).select_related('run').order_by('-run__run_date')
+        # Check if a specific run is requested via query parameter
+        run_id = self.request.GET.get('run')
+        selected_run = None
         
-        # For superusers, if they don't have assignments, get the latest run
-        if self.request.user.is_superuser and not user_assignments.exists():
-            latest_run = Run.objects.filter(exams=self.object).order_by('-run_date').first()
-            if latest_run:
-                # Create a mock assignment context for display
+        if run_id:
+            try:
+                # Verify that the user has access to this specific run
+                if self.request.user.is_superuser:
+                    selected_run = Run.objects.get(id=run_id, exams=self.object)
+                else:
+                    # Check if user has assignment for this specific run
+                    assignment = RunAssignment.objects.get(
+                        user=self.request.user,
+                        run__id=run_id,
+                        run__exams=self.object
+                    )
+                    selected_run = assignment.run
+            except (Run.DoesNotExist, RunAssignment.DoesNotExist):
+                # If the specific run is not accessible, fall back to default behavior
+                pass
+        
+        if selected_run:
+            # Use the specifically requested run
+            if self.request.user.is_superuser:
+                # Create a mock assignment for superuser
                 class MockAssignment:
                     def __init__(self, run):
                         self.run = run
@@ -204,22 +227,64 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
                             'is_complete': False
                         }
                 
-                assignment = MockAssignment(latest_run)
-                run = latest_run
-                context['run'] = run
+                assignment = MockAssignment(selected_run)
+                context['run'] = selected_run
                 context['assignment'] = assignment
                 context['validation_progress'] = assignment.get_validation_progress()
                 context['is_superuser_view'] = True
-        elif user_assignments.exists():
-            # Use the latest assigned run
-            assignment = user_assignments.first()
-            run = assignment.run
-            context['run'] = run
-            context['assignment'] = assignment
-            context['validation_progress'] = assignment.get_validation_progress()
-            context['is_superuser_view'] = False
+            else:
+                # Get the actual assignment for this user and run
+                assignment = RunAssignment.objects.get(
+                    user=self.request.user,
+                    run=selected_run
+                )
+                context['run'] = selected_run
+                context['assignment'] = assignment
+                context['validation_progress'] = assignment.get_validation_progress()
+                context['is_superuser_view'] = False
         else:
-            return context
+            # Fall back to default behavior (latest assigned run)
+            # Get runs assigned to this user for this exam
+            user_assignments = RunAssignment.objects.filter(
+                user=self.request.user,
+                run__exams=self.object
+            ).select_related('run').order_by('-run__run_date')
+            
+            # For superusers, if they don't have assignments, get the latest run
+            if self.request.user.is_superuser and not user_assignments.exists():
+                latest_run = Run.objects.filter(exams=self.object).order_by('-run_date').first()
+                if latest_run:
+                    # Create a mock assignment context for display
+                    class MockAssignment:
+                        def __init__(self, run):
+                            self.run = run
+                            self.is_completed = False
+                        
+                        def get_validation_progress(self):
+                            return {
+                                'total_predictions': 0,
+                                'validated_predictions': 0,
+                                'remaining_predictions': 0,
+                                'percentage_complete': 0,
+                                'is_complete': False
+                            }
+                    
+                    assignment = MockAssignment(latest_run)
+                    run = latest_run
+                    context['run'] = run
+                    context['assignment'] = assignment
+                    context['validation_progress'] = assignment.get_validation_progress()
+                    context['is_superuser_view'] = True
+            elif user_assignments.exists():
+                # Use the latest assigned run
+                assignment = user_assignments.first()
+                run = assignment.run
+                context['run'] = run
+                context['assignment'] = assignment
+                context['validation_progress'] = assignment.get_validation_progress()
+                context['is_superuser_view'] = False
+            else:
+                return context
         
         # Get severity and vertebrae predictions for the run
         if 'run' in context:
@@ -238,6 +303,7 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
                     for vertebra in vertebrae:
                         severity_predictions.append({
                             # 'vertebra_name': vertebra.name,
+                            'id': severity.id,
                             'severity_name': severity.severity_name,
                             'confidence': severity.confidence * 100,  # Convert to percentage
                             'bounding_box': {
@@ -310,3 +376,106 @@ def get_exam_data(request, pk):
                 break
     
     return JsonResponse(data)
+
+
+# ============ ADMIN-ONLY VIEWS ============
+
+class ExamCreationForm(forms.ModelForm):
+    """Form for creating new exams."""
+    class Meta:
+        model = Exam
+        fields = ['external_id', 'image_path']
+        widgets = {
+            'external_id': forms.TextInput(attrs={'placeholder': 'e.g., EXAM-2025-001'}),
+            'image_path': forms.URLInput(attrs={'placeholder': 'https://example.com/image.png'}),
+        }
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminExamCreateView(CreateView):
+    """Admin-only view for creating new exams."""
+    model = Exam
+    form_class = ExamCreationForm
+    template_name = 'validation/admin_exam_create.html'
+    success_url = reverse_lazy('validation:admin_exam_create')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Exam "{form.instance.external_id}" created successfully!')
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add recent exams for reference
+        context['recent_exams'] = Exam.objects.order_by('-created_at')[:5]
+        return context
+
+
+class RunAssignmentForm(forms.Form):
+    """Form for assigning runs to users."""
+    run = forms.ModelChoiceField(
+        queryset=Run.objects.all(),
+        empty_label="Select a run to assign...",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True),
+        empty_label="Select a user...",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'Optional notes about this assignment...'
+        }),
+        help_text="Optional notes about this assignment"
+    )
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminRunAssignmentView(FormView):
+    """Admin-only view for assigning runs to users."""
+    form_class = RunAssignmentForm
+    template_name = 'validation/admin_run_assignment.html'
+    success_url = reverse_lazy('validation:admin_run_assignment')
+    
+    def form_valid(self, form):
+        run = form.cleaned_data['run']
+        user = form.cleaned_data['user']
+        notes = form.cleaned_data['notes']
+        
+        # Check if assignment already exists
+        assignment, created = RunAssignment.objects.get_or_create(
+            run=run,
+            user=user,
+            defaults={
+                'assigned_by': self.request.user,
+                'notes': notes
+            }
+        )
+        
+        if created:
+            messages.success(self.request, f'Run "{run.name}" assigned to {user.email} successfully!')
+        else:
+            messages.warning(self.request, f'Run "{run.name}" is already assigned to {user.email}.')
+        
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get recent assignments
+        context['recent_assignments'] = RunAssignment.objects.select_related(
+            'run', 'user', 'assigned_by'
+        ).order_by('-assigned_at')[:10]
+        
+        # Get run statistics
+        context['total_runs'] = Run.objects.count()
+        context['assigned_runs'] = Run.objects.filter(assignments__isnull=False).distinct().count()
+        context['unassigned_runs'] = Run.objects.filter(assignments__isnull=True).count()
+        
+        # Get user statistics
+        context['total_users'] = User.objects.filter(is_active=True).count()
+        context['users_with_assignments'] = User.objects.filter(run_assignments__isnull=False).distinct().count()
+        
+        return context

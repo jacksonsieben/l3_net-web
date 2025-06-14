@@ -19,6 +19,13 @@ class PredVertebra(models.Model):
         on_delete=models.CASCADE,
         related_name='predicted_vertebrae'
     )
+    exam_id = models.ForeignKey(
+        'validation.Exam',
+        on_delete=models.CASCADE,
+        related_name='predicted_vertebrae',
+        null=True,  # Temporary for migration
+        blank=True
+    )
     model_version = models.ForeignKey(
         'validation.ModelVersion',
         on_delete=models.CASCADE,
@@ -29,3 +36,7 @@ class PredVertebra(models.Model):
         on_delete=models.CASCADE,
         related_name='predicted_vertebrae'
     )
+
+    class Meta:
+        # Ensure one prediction per vertebra per exam per run
+        unique_together = ['run_id', 'exam_id', 'name']

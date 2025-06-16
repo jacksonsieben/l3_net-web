@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: l3_net/web
+  ECR_REPOSITORY: l3net-web
 
 jobs:
   build-and-push:
@@ -42,7 +42,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build \
+            --build-arg SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -75,11 +77,10 @@ jobs:
         env:
           ECR_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
         run: |
-          cd /home/ubuntu/l3net
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << EOF
           echo "Deploying L3NET Web Application..."
           echo "ECR URI: ${{ env.ECR_URI }}"
-          
+
           # Create .env-l3net file with GitHub environment variables
           cat > /home/ubuntu/.env-l3net << 'ENVEOF'
           # ECR Configuration
@@ -100,33 +101,33 @@ jobs:
           # AWS Configuration
           AWS_REGION=${{ env.AWS_REGION }}
           ENVEOF
-          
+
           # Source the environment variables
           source /home/ubuntu/.env-l3net
-          
+
           # Login to ECR
           aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-          
+
           # Stop and remove existing containers
           docker compose -f /home/ubuntu/l3net-web/compose.yaml down || true
-          
+
           # Pull new image
           docker pull ${{ env.ECR_URI }}
-          
+
           # Navigate to project directory
           cd /home/ubuntu/l3net-web
-          
+
           # Start the application
           docker compose up -d
-          
+
           # Wait for services to be ready
           # sleep 10
-          
+
           # Run database migrations
           # docker compose exec -T web python manage.py migrate
-          
+
           # Collect static files
           # docker compose exec -T web python manage.py collectstatic --noinput
-          
+
           echo "Deployment completed successfully!"
           EOF

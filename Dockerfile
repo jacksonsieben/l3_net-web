@@ -1,11 +1,14 @@
 # Use Python 3.13 slim image
 FROM python:3.13-slim
 
+# Build argument for SECRET_KEY
+ARG SECRET_KEY
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DJANGO_SETTINGS_MODULE=l3net_web.production_settings
+ENV SECRET_KEY=${SECRET_KEY}
 
 # Set work directory
 WORKDIR /app
@@ -29,8 +32,8 @@ COPY . /app/
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# Collect static files using production settings
+RUN DJANGO_SETTINGS_MODULE=l3net_web.production_settings python manage.py collectstatic --noinput
 
 # Create a non-root user
 RUN groupadd -r django && useradd -r -g django django

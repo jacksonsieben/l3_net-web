@@ -21,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-*3o)i**vxk@$8lt9!%ts1j(4=bvesubqk^l8h=9v0%$+t1d*h3'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-*3o)i**vxk@$8lt9!%ts1j(4=bvesubqk^l8h=9v0%$+t1d*h3')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -82,11 +82,11 @@ WSGI_APPLICATION = 'l3net_web.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'l3net_db',
-        'USER': 'l3net_admin',
-        'PASSWORD': 'l3net_pass123',
-        'HOST': 'localhost',  # Or 'db' if Django is also inside Docker
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'l3net_db'),
+        'USER': os.getenv('DB_USER', 'l3net_admin'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'l3net_pass123'),
+        'HOST': os.getenv('DB_HOST', 'db'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 

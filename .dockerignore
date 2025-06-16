@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+README.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.DS_Store
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose*.yml
+compose.yaml
+
+# GitHub
+.github/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Node modules (if any)
+node_modules/
+
+# Media files (in development)
+media/
+
+# Static files (will be collected in container)
+staticfiles/

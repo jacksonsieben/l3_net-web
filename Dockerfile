@@ -1,14 +1,10 @@
 # Use Python 3.13 slim image
 FROM python:3.13-slim
 
-# Build argument for SECRET_KEY
-ARG SECRET_KEY
-
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
-ENV SECRET_KEY=${SECRET_KEY}
 
 # Set work directory
 WORKDIR /app

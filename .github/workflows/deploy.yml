@@ -87,7 +87,7 @@ jobs:
           echo "Deploying L3NET Web Application..."
           echo "ECR URI: $ECR_URI"
 
-          # Create .env-l3net file with GitHub environment variables
+          # Create .env-l3net file with proper variable substitution
           cat > /home/ubuntu/.env-l3net << 'ENVEOF'
           # ECR Configuration
           ECR_REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
@@ -107,6 +107,19 @@ jobs:
           # AWS Configuration
           AWS_REGION=$AWS_REGION
           ENVEOF
+
+          # Export variables for the remote session
+          export AWS_ACCOUNT_ID="$AWS_ACCOUNT_ID"
+          export AWS_REGION="$AWS_REGION"
+          export ECR_REPOSITORY="$ECR_REPOSITORY"
+          export IMAGE_TAG="$IMAGE_TAG"
+          export SECRET_KEY="$SECRET_KEY"
+          export DEBUG="$DEBUG"
+          export ALLOWED_HOSTS="$ALLOWED_HOSTS"
+          export DB_NAME="$DB_NAME"
+          export DB_USER="$DB_USER"
+          export DB_PASSWORD="$DB_PASSWORD"
+          export ECR_URI="$ECR_URI"
 
           # Source the environment variables
           source /home/ubuntu/.env-l3net

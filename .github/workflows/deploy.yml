@@ -1,0 +1,132 @@
+name: Build and Deploy to ECR and EC2
+
+on:
+  push:
+    branches: [main, master]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: l3_net/web
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create or update ECR repository
+        run: |
+          aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $AWS_REGION || \
+          aws ecr create-repository \
+            --repository-name $ECR_REPOSITORY \
+            --region $AWS_REGION \
+            --image-scanning-configuration scanOnPush=true
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Output image URI
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "Latest Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    name: Deploy to EC2
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH for EC2
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy to EC2
+        env:
+          ECR_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          cd /home/ubuntu/l3net
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << EOF
+          echo "Deploying L3NET Web Application..."
+          echo "ECR URI: ${{ env.ECR_URI }}"
+          
+          # Create .env-l3net file with GitHub environment variables
+          cat > /home/ubuntu/.env-l3net << 'ENVEOF'
+          # ECR Configuration
+          ECR_REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG=${{ github.sha }}
+
+          # Django Configuration
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=${{ vars.DEBUG }}
+          ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
+
+          # Database Configuration
+          DB_NAME=${{ vars.DB_NAME }}
+          DB_USER=${{ vars.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+          # AWS Configuration
+          AWS_REGION=${{ env.AWS_REGION }}
+          ENVEOF
+          
+          # Source the environment variables
+          source /home/ubuntu/.env-l3net
+          
+          # Login to ECR
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          
+          # Stop and remove existing containers
+          docker compose -f /home/ubuntu/l3net-web/compose.yaml down || true
+          
+          # Pull new image
+          docker pull ${{ env.ECR_URI }}
+          
+          # Navigate to project directory
+          cd /home/ubuntu/l3net-web
+          
+          # Start the application
+          docker compose up -d
+          
+          # Wait for services to be ready
+          # sleep 10
+          
+          # Run database migrations
+          # docker compose exec -T web python manage.py migrate
+          
+          # Collect static files
+          # docker compose exec -T web python manage.py collectstatic --noinput
+          
+          echo "Deployment completed successfully!"
+          EOF

@@ -29,7 +29,7 @@ COPY . /app/
 RUN mkdir -p /app/staticfiles /app/media
 
 # Collect static files using production settings
-RUN DJANGO_SETTINGS_MODULE=l3net_web.production_settings python manage.py collectstatic --noinput
+# RUN DJANGO_SETTINGS_MODULE=l3net_web.production_settings python manage.py collectstatic --noinput
 
 # Create a non-root user
 RUN groupadd -r django && useradd -r -g django django

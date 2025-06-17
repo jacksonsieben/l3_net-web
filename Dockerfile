@@ -37,7 +37,7 @@ RUN chown -R django:django /app
 USER django
 
 # Expose port
-EXPOSE 8000
+EXPOSE 1486
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

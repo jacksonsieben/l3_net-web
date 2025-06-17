@@ -4,7 +4,7 @@ services:
     container_name: l3net_web
     restart: always
     ports:
-      - "8000:8000"
+      - "1486:8000"
     environment:
       DJANGO_SETTINGS_MODULE: l3net_web.production_settings
       SECRET_KEY: ${SECRET_KEY}

@@ -108,7 +108,8 @@ jobs:
           export DB_USER="${{ vars.DB_USER }}"
           export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
           export ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
-
+          export ECR_REGISTRY="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+          
           # Source the environment variables
           source /home/ubuntu/.env-l3net
 

@@ -2,7 +2,7 @@ name: Build and Deploy to ECR and EC2
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
 
 jobs:
   build-and-push:
@@ -40,10 +40,10 @@ jobs:
         run: |
           docker build \
             --build-arg SECRET_KEY="${{ secrets.SECRET_KEY }}" \
-            -t $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:latest
+            -t $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:${{ github.sha }} .
+          docker tag $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:${{ github.sha }} $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:latest
 
-          docker push $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG
+          docker push $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
           docker push $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:latest
 
       - name: Output image URI
@@ -51,7 +51,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "Image URI: $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:$IMAGE_TAG"
+          echo "Image URI: $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
           echo "Latest Image URI: $ECR_REGISTRY/${{ vars.ECR_REPOSITORY }}:latest"
 
   deploy:
@@ -70,68 +70,56 @@ jobs:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: Deploy to EC2
-        env:
-          ECR_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          DEBUG: ${{ vars.DEBUG }}
-          ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
           echo "Deploying L3NET Web Application..."
-          echo "ECR URI: $ECR_URI"
+          echo "ECR URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
 
           # Create .env-l3net file with proper variable substitution
           cat > /home/ubuntu/.env-l3net << 'ENVEOF'
           # ECR Configuration
-          ECR_REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          ECR_REPOSITORY=$ECR_REPOSITORY
-          IMAGE_TAG=$IMAGE_TAG
+          ECR_REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+          ECR_REPOSITORY=${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG=${{ github.sha }}
 
           # Django Configuration
-          SECRET_KEY=$SECRET_KEY
-          DEBUG=$DEBUG
-          ALLOWED_HOSTS=$ALLOWED_HOSTS
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=${{ vars.DEBUG }}
+          ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
 
           # Database Configuration
-          DB_NAME=$DB_NAME
-          DB_USER=$DB_USER
-          DB_PASSWORD=$DB_PASSWORD
+          DB_NAME=${{ vars.DB_NAME }}
+          DB_USER=${{ vars.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
           # AWS Configuration
-          AWS_REGION=$AWS_REGION
+          AWS_REGION=${{ vars.AWS_REGION }}
           ENVEOF
 
           # Export variables for the remote session
-          export AWS_ACCOUNT_ID="$AWS_ACCOUNT_ID"
-          export AWS_REGION="$AWS_REGION"
-          export ECR_REPOSITORY="$ECR_REPOSITORY"
-          export IMAGE_TAG="$IMAGE_TAG"
-          export SECRET_KEY="$SECRET_KEY"
-          export DEBUG="$DEBUG"
-          export ALLOWED_HOSTS="$ALLOWED_HOSTS"
-          export DB_NAME="$DB_NAME"
-          export DB_USER="$DB_USER"
-          export DB_PASSWORD="$DB_PASSWORD"
-          export ECR_URI="$ECR_URI"
+          export AWS_ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+          export AWS_REGION="${{ vars.AWS_REGION }}"
+          export ECR_REPOSITORY="${{ vars.ECR_REPOSITORY }}"
+          export IMAGE_TAG="${{ github.sha }}"
+          export SECRET_KEY="${{ secrets.SECRET_KEY }}"
+          export DEBUG="${{ vars.DEBUG }}"
+          export ALLOWED_HOSTS="${{ vars.ALLOWED_HOSTS }}"
+          export DB_NAME="${{ vars.DB_NAME }}"
+          export DB_USER="${{ vars.DB_USER }}"
+          export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+          export ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
 
           # Source the environment variables
           source /home/ubuntu/.env-l3net
 
           # Login to ECR
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
 
           # Stop and remove existing containers
           docker compose -f /home/ubuntu/l3net-web/compose.yaml down || true
 
           # Pull new image
-          docker pull $ECR_URI
+          docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
 
           # Navigate to project directory
           cd /home/ubuntu/l3net-web
@@ -140,13 +128,13 @@ jobs:
           docker compose up -d
 
           # Wait for services to be ready
-          sleep 10
+          # sleep 10
 
           # Run database migrations
-          docker compose exec -T web python manage.py migrate
+          # docker compose exec -T web python manage.py migrate
 
           # Collect static files
-          docker compose exec -T web python manage.py collectstatic --noinput
+          # docker compose exec -T web python manage.py collectstatic --noinput
 
           echo "Deployment completed successfully!"
           EOF

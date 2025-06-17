@@ -125,7 +125,7 @@ jobs:
           cd /home/ubuntu/l3net-web
 
           # Start the application
-          docker compose up -d
+          docker-compose up -d
 
           # Wait for services to be ready
           # sleep 10

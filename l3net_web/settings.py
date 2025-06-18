@@ -82,11 +82,11 @@ WSGI_APPLICATION = 'l3net_web.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'l3net_db'),
-        'USER': os.getenv('DB_USER', 'l3net_admin'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'l3net_pass123'),
-        'HOST': os.getenv('DB_HOST', 'db'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'NAME': 'l3net_db',
+        'USER': 'l3net_admin',
+        'PASSWORD': 'l3net_pass123',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

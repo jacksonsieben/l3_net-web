@@ -116,6 +116,8 @@ jobs:
           # Login to ECR
           aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
 
+          pwd
+          
           # Stop and remove existing containers
           docker-compose -f /home/ubuntu/l3net-web/compose.yaml down || true
 

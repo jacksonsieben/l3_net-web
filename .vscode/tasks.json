@@ -107,7 +107,7 @@
             "label": "Docker Compose Up",
             "type": "shell",
             "command": "docker",
-            "args": ["compose", "up", "-d"],
+            "args": ["compose", "-f", "compose.local.yaml", "up", "-d"],
             "problemMatcher": []
         },
         {

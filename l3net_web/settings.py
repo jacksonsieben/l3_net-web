@@ -134,7 +134,7 @@ STATICFILES_DIRS = [
 ]
 
 # For production - where collectstatic puts all static files
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = '/app/staticfiles'
 
 # Static files finders - Django uses these to find static files
 STATICFILES_FINDERS = [

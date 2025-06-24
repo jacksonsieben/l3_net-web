@@ -22,15 +22,14 @@ RUN apt-get update \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN python manage.py collectstatic --noinput
 # Copy project
 COPY . /app/
 
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files using production settings
-# RUN DJANGO_SETTINGS_MODULE=l3net_web.production_settings python manage.py collectstatic --noinput
+# Collect static files
+RUN python manage.py collectstatic --noinput
 
 # Create a non-root user
 RUN groupadd -r django && useradd -r -g django django

@@ -131,10 +131,10 @@ jobs:
           # Wait for services to be ready
           sleep 10
 
-          docker compose exec -T l3net_web python manage.py makemigrations
+          docker-compose exec -T l3net_web python manage.py makemigrations
 
           # Run database migrations
-          docker compose exec -T l3net_web python manage.py migrate
+          docker-compose exec -T l3net_web python manage.py migrate
 
           docker rmi ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }} || true
 

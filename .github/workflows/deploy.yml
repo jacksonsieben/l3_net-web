@@ -136,7 +136,7 @@ jobs:
           # Run database migrations
           docker compose exec -T l3net_web python manage.py migrate
 
-          docker rmi ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:latest || true
+          docker rmi ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }} || true
 
           echo "Deployment completed successfully!"
           EOF

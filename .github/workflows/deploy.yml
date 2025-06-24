@@ -137,7 +137,7 @@ jobs:
           docker-compose exec -T l3net_web python manage.py migrate
 
           # Collect static files
-          docker-compose exec -T l3net_web python manage.py collectstatic --noinput
+          docker exec -it l3net_web python manage.py collectstatic --noinput
 
           docker system prune -a --volumes -f
 

@@ -29,7 +29,7 @@ COPY . /app/
 RUN mkdir -p /app/staticfiles /app/media
 
 # Collect static files
-RUN python manage.py collectstatic --noinput
+# RUN python manage.py collectstatic --noinput
 
 # Create a non-root user
 RUN groupadd -r django && useradd -r -g django django

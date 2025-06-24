@@ -11,5 +11,7 @@ urlpatterns = [
     
     # Admin-only URLs
     path('admin/exam/create/', views.AdminExamCreateView.as_view(), name='admin_exam_create'),
+    path('admin/exam/<int:pk>/edit/', views.AdminExamEditView.as_view(), name='admin_exam_edit'),
+    path('admin/exam/<int:pk>/delete/', views.AdminExamDeleteView.as_view(), name='admin_exam_delete'),
     path('admin/run/assign/', views.AdminRunAssignmentView.as_view(), name='admin_run_assignment'),
 ]

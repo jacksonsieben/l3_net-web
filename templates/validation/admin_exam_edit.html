@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Admin - Edit Exam{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center space-x-3 mb-2">
+                <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Edit Exam</h1>
+                    <p class="text-gray-600">Modify exam information for: <strong>{{ exam.external_id }}</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Info -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start space-x-3">
+                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div class="flex-1">
+                    <h3 class="text-sm font-medium text-blue-800">Exam Details</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p><strong>ID:</strong> {{ exam.id }}</p>
+                        <p><strong>Created:</strong> {{ exam.created_at|date:"F j, Y, g:i A" }}</p>
+                        <p><strong>Last Updated:</strong> {{ exam.updated_at|date:"F j, Y, g:i A" }}</p>
+                        {% if associated_runs %}
+                            <p><strong>Associated Runs:</strong> 
+                                {% for run in associated_runs %}
+                                    <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs mr-1">{{ run.name }}</span>
+                                {% endfor %}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- External ID Field -->
+                <div>
+                    <label for="{{ form.external_id.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        External ID <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.external_id|add_class:"w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500" }}
+                    {% if form.external_id.help_text %}
+                        <p class="mt-1 text-sm text-gray-500">{{ form.external_id.help_text }}</p>
+                    {% endif %}
+                    {% if form.external_id.errors %}
+                        <div class="mt-1">
+                            {% for error in form.external_id.errors %}
+                                <p class="text-sm text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Image Path Field -->
+                <div>
+                    <label for="{{ form.image_path.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Image URL <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.image_path|add_class:"w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500" }}
+                    {% if form.image_path.help_text %}
+                        <p class="mt-1 text-sm text-gray-500">{{ form.image_path.help_text }}</p>
+                    {% endif %}
+                    {% if form.image_path.errors %}
+                        <div class="mt-1">
+                            {% for error in form.image_path.errors %}
+                                <p class="text-sm text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div class="flex space-x-3">
+                        <a href="{% url 'validation:exam_list' %}" 
+                           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+                            Cancel
+                        </a>
+                        <a href="{% url 'validation:exam_detail' exam.pk %}" 
+                           class="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md shadow-sm hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            View Exam
+                        </a>
+                    </div>
+                    <button type="submit" 
+                            class="px-6 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Update Exam
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Danger Zone (for admin operations) -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 mt-6">
+            <div class="flex items-start space-x-3">
+                <svg class="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+                <div class="flex-1">
+                    <h3 class="text-sm font-medium text-red-800">Danger Zone</h3>
+                    <p class="mt-1 text-sm text-red-700">
+                        Modifying exam information may affect associated runs and predictions. 
+                        Please ensure you understand the impact before making changes.
+                    </p>
+                    <div class="mt-3">
+                        <a href="{% url 'validation:admin_exam_delete' exam.pk %}" 
+                           class="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Delete This Exam
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

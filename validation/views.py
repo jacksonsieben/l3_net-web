@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
-from django.views.generic import ListView, DetailView, CreateView, FormView
+from django.views.generic import ListView, DetailView, CreateView, FormView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse, Http404, HttpResponseRedirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
@@ -391,6 +391,29 @@ class ExamCreationForm(forms.ModelForm):
         }
 
 
+class ExamEditForm(forms.ModelForm):
+    """Form for editing existing exams."""
+    class Meta:
+        model = Exam
+        fields = ['external_id', 'image_path']
+        widgets = {
+            'external_id': forms.TextInput(attrs={'placeholder': 'e.g., EXAM-2025-001'}),
+            'image_path': forms.URLInput(attrs={'placeholder': 'https://example.com/image.png'}),
+        }
+    
+    def clean_external_id(self):
+        external_id = self.cleaned_data['external_id']
+        # Exclude current instance from uniqueness check
+        queryset = Exam.objects.filter(external_id=external_id)
+        if self.instance and self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        
+        if queryset.exists():
+            raise forms.ValidationError("An exam with this external ID already exists.")
+        
+        return external_id
+
+
 @method_decorator(staff_member_required, name='dispatch')
 class AdminExamCreateView(CreateView):
     """Admin-only view for creating new exams."""
@@ -409,6 +432,28 @@ class AdminExamCreateView(CreateView):
         context['recent_exams'] = Exam.objects.order_by('-created_at')[:5]
         return context
 
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminExamEditView(UpdateView):
+    """Admin-only view for editing existing exams."""
+    model = Exam
+    form_class = ExamEditForm
+    template_name = 'validation/admin_exam_edit.html'
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Exam "{form.instance.external_id}" updated successfully!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse_lazy('validation:admin_exam_edit', kwargs={'pk': self.object.pk})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['exam'] = self.object
+        context['editing'] = True
+        # Add runs associated with this exam for reference
+        context['associated_runs'] = self.object.runs.all()
+        return context
 
 class RunAssignmentForm(forms.Form):
     """Form for assigning runs to users."""
@@ -478,4 +523,37 @@ class AdminRunAssignmentView(FormView):
         context['total_users'] = User.objects.filter(is_active=True).count()
         context['users_with_assignments'] = User.objects.filter(run_assignments__isnull=False).distinct().count()
         
+        return context
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminExamDeleteView(DeleteView):
+    """Admin-only view for deleting exams."""
+    model = Exam
+    template_name = 'validation/admin_exam_delete.html'
+    success_url = reverse_lazy('validation:exam_list')
+    
+    def delete(self, request, *args, **kwargs):
+        """Override delete to add success message."""
+        self.object = self.get_object()
+        external_id = self.object.external_id
+        success_url = self.get_success_url()
+        
+        # Check if exam has associated runs or predictions
+        has_runs = self.object.runs.exists()
+        
+        if has_runs:
+            messages.warning(
+                request, 
+                f'Warning: Exam "{external_id}" had associated runs and predictions that were also deleted.'
+            )
+        
+        self.object.delete()
+        messages.success(request, f'Exam "{external_id}" has been successfully deleted.')
+        return HttpResponseRedirect(success_url)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add information about what will be deleted
+        context['associated_runs'] = self.object.runs.all()
+        context['has_associations'] = self.object.runs.exists()
         return context

@@ -164,8 +164,14 @@ class RunWithPredictionsSerializer(serializers.ModelSerializer):
         for pred_data in vertebra_predictions_data:
             polygon_data = pred_data.pop('polygon')
             polygon = Polygon.objects.create(**polygon_data)
+            
+            # Get the exam_id and convert to Exam instance
+            exam_id = pred_data.pop('exam_id')
+            exam = Exam.objects.get(id=exam_id)
+            
             PredVertebra.objects.create(
                 run_id=run,
+                exam_id=exam,
                 polygon=polygon,
                 **pred_data
             )
@@ -174,8 +180,14 @@ class RunWithPredictionsSerializer(serializers.ModelSerializer):
         for pred_data in severity_predictions_data:
             bounding_box_data = pred_data.pop('bounding_box')
             bounding_box = Polygon.objects.create(**bounding_box_data)
+            
+            # Get the exam_id and convert to Exam instance
+            exam_id = pred_data.pop('exam_id')
+            exam = Exam.objects.get(id=exam_id)
+            
             PredSeverity.objects.create(
                 run_id=run,
+                exam_id=exam,
                 bounding_box=bounding_box,
                 **pred_data
             )

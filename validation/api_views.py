@@ -224,6 +224,7 @@ def create_run_with_predictions(request):
                 "name": "L1",
                 "confidence": 0.95,
                 "model_version_id": 1,
+                "exam_id": 1,
                 "polygon": {
                     "x1": 0.1,
                     "y1": 0.2,
@@ -237,6 +238,8 @@ def create_run_with_predictions(request):
                 "severity_name": "MODERATE",
                 "confidence": 0.87,
                 "model_version_id": 1,
+                "exam_id": 1,
+                "vertebrae_level": "L1_L2",
                 "bounding_box": {
                     "x1": 0.15,
                     "y1": 0.25,

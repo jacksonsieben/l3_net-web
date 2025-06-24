@@ -1,6 +1,6 @@
 # Production settings for l3net_web
 import os
-from .settings import *
+from .base import *
 
 # Override settings for production
 DEBUG = False

@@ -20,7 +20,10 @@ class ModelVersionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ModelVersion
-        fields = ['id', 'version_number', 'model_name', 'model_type', 'description']
+        fields = ['id', 'version_number', 'model_name', 'model_type', 'description', 'model_path']
+        extra_kwargs = {
+            'model_path': {'required': False, 'allow_blank': True, 'allow_null': True}
+        }
 
 
 class ExamSerializer(serializers.ModelSerializer):

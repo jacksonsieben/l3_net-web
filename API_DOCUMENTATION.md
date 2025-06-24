@@ -231,11 +231,19 @@ Content-Type: application/json
 
 {
     "version_number": "v2.1",
-    "model_name": "SpineStenosis-Advanced",
+    "model_name": "SpineStenosis-Advanced", 
     "model_type": "classification",
-    "description": "Advanced model with improved accuracy"
+    "description": "Advanced model with improved accuracy",
+    "model_path": "/path/to/model/file.pkl"
 }
 ```
+
+**Fields:**
+- `version_number` (required): Version number of the model
+- `model_name` (required): Name of the model
+- `model_type` (required): Type of the model (e.g., "classification", "regression")
+- `description` (optional): Description of the model version
+- `model_path` (optional): Path to the model file
 
 **Response:**
 ```json
@@ -243,9 +251,9 @@ Content-Type: application/json
     "id": 1,
     "version_number": "v2.1",
     "model_name": "SpineStenosis-Advanced",
-    "model_type": "classification",
+    "model_type": "classification", 
     "description": "Advanced model with improved accuracy",
-    "created_at": "2025-06-11T10:30:00Z"
+    "model_path": "/path/to/model/file.pkl"
 }
 ```
 
@@ -258,9 +266,45 @@ GET /api/model-versions/
 Authorization: Token your_token_here
 ```
 
+#### 12. Find Model Version by Version and Type
+
+Find a specific model version by its version number and model type.
+
+```http
+GET /api/model-versions/find/?version_number=1.0&model_type=classification
+Authorization: Token your_token_here
+```
+
+**Parameters:**
+- `version_number` (required): The version number of the model (e.g., "1.0", "2.1.3")
+- `model_type` (required): The type of the model (e.g., "classification", "regression")
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "version_number": "1.0",
+        "model_name": "Spinal Stenosis Classifier",
+        "model_type": "classification",
+        "description": "Initial version of the classifier model",
+        "model_path": "/path/to/model/file.pkl"
+    }
+}
+```
+
+**Error Response (404):**
+```json
+{
+    "success": false,
+    "message": "Model version not found with version_number=\"1.0\" and model_type=\"classification\""
+}
+```
+
 ### Run Management
 
-#### 12. Create Simple Run
+#### 13. Create Simple Run
 
 Create a basic run and assign exams to it.
 
@@ -287,7 +331,7 @@ Content-Type: application/json
 }
 ```
 
-#### 13. List All Runs
+#### 14. List All Runs
 
 Get all runs in the system.
 
@@ -296,7 +340,7 @@ GET /api/runs/
 Authorization: Token your_token_here
 ```
 
-#### 14. Get Run Details
+#### 15. Get Run Details
 
 Get details of a specific run.
 
@@ -305,7 +349,7 @@ GET /api/runs/{id}/
 Authorization: Token your_token_here
 ```
 
-#### 15. Create Run with Predictions (Complete)
+#### 16. Create Run with Predictions (Complete)
 
 Create a complete run with exams and all predictions in one API call.
 
@@ -391,7 +435,7 @@ Content-Type: application/json
 }
 ```
 
-#### 16. Add Predictions to Existing Run
+#### 17. Add Predictions to Existing Run
 
 Add more predictions to an existing run.
 
@@ -445,7 +489,7 @@ Content-Type: application/json
 }
 ```
 
-#### 17. Get Run Predictions
+#### 18. Get Run Predictions
 
 Retrieve all predictions for a specific run.
 
@@ -495,7 +539,7 @@ Authorization: Token your_token_here
 
 ### User Assignment Management
 
-#### 18. Assign Run to User
+#### 19. Assign Run to User
 
 Assign a run to a user for validation.
 

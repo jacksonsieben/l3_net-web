@@ -20,6 +20,7 @@ urlpatterns = [
     
     # Model version endpoints
     path('model-versions/', api_views.ModelVersionListCreateView.as_view(), name='model_version_list_create'),
+    path('model-versions/find/', api_views.get_model_version_by_version_and_type, name='get_model_version_by_version_and_type'),
     
     # Run endpoints
     path('runs/', api_views.RunListCreateView.as_view(), name='run_list_create'),

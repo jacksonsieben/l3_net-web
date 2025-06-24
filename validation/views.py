@@ -8,6 +8,9 @@ from django.utils.decorators import method_decorator
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth import get_user_model
 from django import forms
+from django.db.models import Count, Q
+
+User = get_user_model()
 
 from .models.exam import Exam
 from .models.run import Run
@@ -562,3 +565,176 @@ class AdminExamDeleteView(DeleteView):
         context['associated_runs'] = self.object.runs.all()
         context['has_associations'] = self.object.runs.exists()
         return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminRunListView(ListView):
+    """Admin-only view for managing all runs."""
+    model = Run
+    template_name = 'validation/admin_run_list.html'
+    context_object_name = 'runs'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = Run.objects.prefetch_related(
+            'exams',
+            'assignments__user',
+            'predicted_severities',
+            'predicted_vertebrae'
+        ).annotate(
+            exam_count=Count('exams', distinct=True),
+            assignment_count=Count('assignments', distinct=True),
+            prediction_count=Count('predicted_severities', distinct=True) + Count('predicted_vertebrae', distinct=True)
+        ).order_by('-run_date')
+        
+        # Filter by search query if provided
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('search', '')
+        
+        # Get statistics
+        context['total_runs'] = Run.objects.count()
+        context['assigned_runs'] = Run.objects.filter(assignments__isnull=False).distinct().count()
+        context['unassigned_runs'] = Run.objects.filter(assignments__isnull=True).count()
+        
+        return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminRunEditView(UpdateView):
+    """Admin-only view for editing run details."""
+    model = Run
+    fields = ['name', 'description']
+    template_name = 'validation/admin_run_edit.html'
+    success_url = reverse_lazy('validation:admin_run_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Run "{form.instance.name}" updated successfully!')
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get run statistics
+        run = self.object
+        context['exam_count'] = run.exams.count()
+        context['assignment_count'] = run.assignments.count()
+        context['prediction_count'] = run.get_total_predictions()
+        
+        # Get assignments for this run
+        context['assignments'] = run.assignments.select_related('user', 'assigned_by').all()
+        
+        return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminRunDeleteView(DeleteView):
+    """Admin-only view for deleting runs."""
+    model = Run
+    template_name = 'validation/admin_run_delete.html'
+    success_url = reverse_lazy('validation:admin_run_list')
+    
+    def delete(self, request, *args, **kwargs):
+        """Override delete to add success message."""
+        self.object = self.get_object()
+        run_name = self.object.name
+        success_url = self.get_success_url()
+        
+        # Check if run has assignments or predictions
+        has_assignments = self.object.assignments.exists()
+        has_predictions = self.object.get_total_predictions() > 0
+        
+        if has_assignments or has_predictions:
+            messages.warning(
+                request,
+                f'Run "{run_name}" has been deleted, including {self.object.assignments.count()} assignment(s) '
+                f'and {self.object.get_total_predictions()} prediction(s).'
+            )
+        else:
+            messages.success(request, f'Run "{run_name}" deleted successfully!')
+        
+        self.object.delete()
+        return HttpResponseRedirect(success_url)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get run details for confirmation
+        run = self.object
+        context['exam_count'] = run.exams.count()
+        context['assignment_count'] = run.assignments.count()
+        context['prediction_count'] = run.get_total_predictions()
+        context['assignments'] = run.assignments.select_related('user').all()
+        
+        return context
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminRunAssignView(FormView):
+    """Admin-only view for assigning a specific run to users."""
+    form_class = RunAssignmentForm
+    template_name = 'validation/admin_run_assign.html'
+    
+    def get_success_url(self):
+        return reverse_lazy('validation:admin_run_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get the run from URL parameter
+        run_id = self.kwargs.get('pk')
+        if run_id:
+            try:
+                context['run'] = Run.objects.get(pk=run_id)
+                context['existing_assignments'] = context['run'].assignments.select_related('user', 'assigned_by').all()
+            except Run.DoesNotExist:
+                context['run'] = None
+        
+        return context
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        
+        # Pre-populate run field if provided in URL
+        run_id = self.kwargs.get('pk')
+        if run_id:
+            try:
+                run = Run.objects.get(pk=run_id)
+                if 'initial' not in kwargs:
+                    kwargs['initial'] = {}
+                kwargs['initial']['run'] = run
+            except Run.DoesNotExist:
+                pass
+        
+        return kwargs
+    
+    def form_valid(self, form):
+        run = form.cleaned_data['run']
+        user = form.cleaned_data['user']
+        notes = form.cleaned_data['notes']
+        
+        # Check if assignment already exists
+        assignment, created = RunAssignment.objects.get_or_create(
+            run=run,
+            user=user,
+            defaults={
+                'assigned_by': self.request.user,
+                'notes': notes
+            }
+        )
+        
+        if created:
+            messages.success(self.request, f'Run "{run.name}" assigned to {user.email} successfully!')
+        else:
+            messages.warning(self.request, f'Run "{run.name}" is already assigned to {user.email}.')
+        
+        return super().form_valid(form)

@@ -38,3 +38,5 @@ urlpatterns = [
 # Add media serving in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # In development, let Django handle static files automatically
+    # Don't explicitly add static URL patterns as Django's staticfiles app handles this

@@ -13,5 +13,11 @@ urlpatterns = [
     path('admin/exam/create/', views.AdminExamCreateView.as_view(), name='admin_exam_create'),
     path('admin/exam/<int:pk>/edit/', views.AdminExamEditView.as_view(), name='admin_exam_edit'),
     path('admin/exam/<int:pk>/delete/', views.AdminExamDeleteView.as_view(), name='admin_exam_delete'),
+    
+    # Run management URLs
+    path('admin/runs/', views.AdminRunListView.as_view(), name='admin_run_list'),
+    path('admin/run/<int:pk>/edit/', views.AdminRunEditView.as_view(), name='admin_run_edit'),
+    path('admin/run/<int:pk>/delete/', views.AdminRunDeleteView.as_view(), name='admin_run_delete'),
+    path('admin/run/<int:pk>/assign/', views.AdminRunAssignView.as_view(), name='admin_run_assign'),
     path('admin/run/assign/', views.AdminRunAssignmentView.as_view(), name='admin_run_assignment'),
 ]

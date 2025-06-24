@@ -181,6 +181,45 @@ class ModelVersionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAdminUser]
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def get_model_version_by_version_and_type(request):
+    """
+    Get model version by version_number and model_type.
+    
+    GET /api/model-versions/find/?version_number=1.0&model_type=classification
+    """
+    version_number = request.query_params.get('version_number')
+    model_type = request.query_params.get('model_type')
+    
+    if not version_number or not model_type:
+        return Response({
+            'success': False,
+            'message': 'Both version_number and model_type parameters are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        model_version = ModelVersion.objects.get(
+            version_number=version_number,
+            model_type=model_type
+        )
+        serializer = ModelVersionSerializer(model_version)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+    except ModelVersion.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': f'Model version not found with version_number="{version_number}" and model_type="{model_type}"'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Error retrieving model version: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class RunListCreateView(generics.ListCreateAPIView):
     """
     List all runs or create a new run.

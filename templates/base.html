@@ -37,15 +37,9 @@
             >
             <span class="text-gray-500">|</span>
             <a
-              href="{% url 'validation:admin_exam_create' %}"
-              class="text-green-600 hover:text-green-800"
-              >Create Exam</a
-            >
-            <span class="text-gray-500">|</span>
-            <a
-              href="{% url 'validation:admin_run_assignment' %}"
-              class="text-green-600 hover:text-green-800"
-              >Assign Runs</a
+              href="{% url 'validation:admin_run_list' %}"
+              class="text-blue-600 hover:text-blue-800"
+              >Runs</a
             >
             <span class="text-gray-500">|</span>
             <a
@@ -113,11 +107,8 @@
             <a href="{% url 'validation:exam_list' %}" class="text-gray-700 hover:text-blue-600 py-1">
               All Exams
             </a>
-            <a href="{% url 'validation:admin_exam_create' %}" class="text-green-600 hover:text-green-800 py-1">
-              Create Exam
-            </a>
-            <a href="{% url 'validation:admin_run_assignment' %}" class="text-green-600 hover:text-green-800 py-1">
-              Assign Runs
+            <a href="{% url 'validation:admin_run_list' %}" class="text-blue-600 hover:text-blue-800 py-1">
+              Runs
             </a>
             <a href="{% url 'users:register' %}" class="text-purple-600 hover:text-purple-800 py-1">
               Create User

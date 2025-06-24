@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Run - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <nav class="flex mb-4" aria-label="Breadcrumb">
+      <ol class="inline-flex items-center space-x-1 md:space-x-3">
+        <li class="inline-flex items-center">
+          <a href="{% url 'validation:admin_run_list' %}" class="text-gray-700 hover:text-blue-600">
+            Runs
+          </a>
+        </li>
+        <li>
+          <div class="flex items-center">
+            <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+            </svg>
+            <span class="ml-1 text-gray-500 md:ml-2">Edit Run</span>
+          </div>
+        </li>
+      </ol>
+    </nav>
+    
+    <h1 class="text-3xl font-bold text-gray-900">Edit Run</h1>
+    <p class="text-gray-600 mt-1">Update run details and view assignments</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main edit form -->
+    <div class="lg:col-span-2">
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Run Details</h3>
+          
+          <form method="post">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 gap-6">
+              <!-- Name field -->
+              <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                  Name
+                </label>
+                <div class="mt-1">
+                  {{ form.name }}
+                </div>
+                {% if form.name.errors %}
+                <div class="mt-1 text-sm text-red-600">
+                  {{ form.name.errors.0 }}
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Description field -->
+              <div>
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <div class="mt-1">
+                  {{ form.description }}
+                </div>
+                {% if form.description.errors %}
+                <div class="mt-1 text-sm text-red-600">
+                  {{ form.description.errors.0 }}
+                </div>
+                {% endif %}
+                <p class="mt-2 text-sm text-gray-500">
+                  Optional description for this run
+                </p>
+              </div>
+            </div>
+
+            <!-- Form actions -->
+            <div class="mt-6 flex items-center justify-end space-x-3">
+              <a
+                href="{% url 'validation:admin_run_list' %}"
+                class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </a>
+              <button
+                type="submit"
+                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Update Run
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar with run information -->
+    <div class="lg:col-span-1">
+      <!-- Run statistics -->
+      <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Run Statistics</h3>
+          
+          <dl class="grid grid-cols-1 gap-5">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Created</dt>
+              <dd class="text-sm text-gray-900">{{ object.run_date|date:"F d, Y \a\t g:i A" }}</dd>
+            </div>
+            
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Exams</dt>
+              <dd class="text-sm text-gray-900">{{ exam_count }}</dd>
+            </div>
+            
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Assignments</dt>
+              <dd class="text-sm text-gray-900">{{ assignment_count }}</dd>
+            </div>
+            
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Predictions</dt>
+              <dd class="text-sm text-gray-900">{{ prediction_count }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h3>
+          
+          <div class="space-y-3">
+            <a
+              href="{% url 'validation:admin_run_assign' object.pk %}"
+              class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+              </svg>
+              Assign to Users
+            </a>
+            
+            <a
+              href="{% url 'validation:admin_run_delete' object.pk %}"
+              class="w-full inline-flex justify-center items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              onclick="return confirm('Are you sure you want to delete this run? This action cannot be undone.')"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              Delete Run
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current assignments -->
+      {% if assignments %}
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Current Assignments</h3>
+          
+          <div class="space-y-3">
+            {% for assignment in assignments %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">
+                  {{ assignment.user.email }}
+                </p>
+                <p class="text-xs text-gray-500">
+                  Assigned {{ assignment.assigned_at|date:"M d, Y" }}
+                  {% if assignment.assigned_by %}
+                  by {{ assignment.assigned_by.email }}
+                  {% endif %}
+                </p>
+              </div>
+              <div class="flex-shrink-0">
+                {% if assignment.is_completed %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  ✓ Complete
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  ⏳ Pending
+                </span>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+/* Form field styling */
+.container input[type="text"],
+.container textarea {
+  appearance: none;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  width: 100%;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.container input[type="text"]:focus,
+.container textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.container textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+</style>
+{% endblock %}

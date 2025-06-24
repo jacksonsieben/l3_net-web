@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Run - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <nav class="flex mb-4" aria-label="Breadcrumb">
+      <ol class="inline-flex items-center space-x-1 md:space-x-3">
+        <li class="inline-flex items-center">
+          <a href="{% url 'validation:admin_run_list' %}" class="text-gray-700 hover:text-blue-600">
+            Runs
+          </a>
+        </li>
+        <li>
+          <div class="flex items-center">
+            <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+            </svg>
+            <span class="ml-1 text-gray-500 md:ml-2">Delete Run</span>
+          </div>
+        </li>
+      </ol>
+    </nav>
+    
+    <h1 class="text-3xl font-bold text-red-900">Delete Run</h1>
+    <p class="text-gray-600 mt-1">This action cannot be undone</p>
+  </div>
+
+  <div class="max-w-2xl mx-auto">
+    <!-- Warning box -->
+    <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">
+            Warning: This action cannot be undone
+          </h3>
+          <div class="mt-2 text-sm text-red-700">
+            <p>
+              Deleting this run will permanently remove it from the system along with all associated data.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Run details card -->
+    <div class="bg-white shadow rounded-lg mb-6">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Run to be deleted</h3>
+        
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Name</dt>
+            <dd class="text-sm text-gray-900">{{ object.name }}</dd>
+          </div>
+          
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Created</dt>
+            <dd class="text-sm text-gray-900">{{ object.run_date|date:"F d, Y \a\t g:i A" }}</dd>
+          </div>
+          
+          {% if object.description %}
+          <div class="sm:col-span-2">
+            <dt class="text-sm font-medium text-gray-500">Description</dt>
+            <dd class="text-sm text-gray-900">{{ object.description }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    <!-- Impact summary -->
+    <div class="bg-white shadow rounded-lg mb-6">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">What will be deleted</h3>
+        
+        <div class="space-y-4">
+          <!-- Exams impact -->
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="text-sm font-medium text-gray-900">Exams</span>
+            </div>
+            <span class="text-sm text-gray-500">
+              {{ exam_count }} exam{{ exam_count|pluralize }} will be unlinked
+            </span>
+          </div>
+
+          <!-- Assignments impact -->
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+              </svg>
+              <span class="text-sm font-medium text-gray-900">Assignments</span>
+            </div>
+            <span class="text-sm text-gray-500">
+              {{ assignment_count }} assignment{{ assignment_count|pluralize }} will be deleted
+            </span>
+          </div>
+
+          <!-- Predictions impact -->
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              <span class="text-sm font-medium text-gray-900">Predictions</span>
+            </div>
+            <span class="text-sm text-gray-500">
+              {{ prediction_count }} prediction{{ prediction_count|pluralize }} will be deleted
+            </span>
+          </div>
+        </div>
+
+        <!-- Affected users -->
+        {% if assignments %}
+        <div class="mt-6">
+          <h4 class="text-sm font-medium text-gray-900 mb-3">Affected users</h4>
+          <div class="space-y-2">
+            {% for assignment in assignments %}
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-700">{{ assignment.user.email }}</span>
+              <span class="text-gray-500">
+                {% if assignment.is_completed %}
+                Completed assignment
+                {% else %}
+                Pending assignment
+                {% endif %}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Confirmation form -->
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Confirm deletion</h3>
+        
+        <form method="post">
+          {% csrf_token %}
+          
+          <div class="mb-6">
+            <p class="text-sm text-gray-700">
+              Type <strong>{{ object.name }}</strong> to confirm you want to delete this run:
+            </p>
+            <input
+              type="text"
+              id="confirm-name"
+              class="mt-2 block w-full border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"
+              placeholder="Enter run name to confirm"
+              required
+            >
+          </div>
+
+          <div class="flex items-center justify-end space-x-3">
+            <a
+              href="{% url 'validation:admin_run_list' %}"
+              class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </a>
+            <button
+              type="submit"
+              id="delete-button"
+              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              Delete Run
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const confirmInput = document.getElementById('confirm-name');
+  const deleteButton = document.getElementById('delete-button');
+  const expectedName = "{{ object.name|escapejs }}";
+
+  confirmInput.addEventListener('input', function() {
+    if (this.value === expectedName) {
+      deleteButton.disabled = false;
+    } else {
+      deleteButton.disabled = true;
+    }
+  });
+});
+</script>
+{% endblock %}

@@ -126,9 +126,26 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+# For development - Django will serve static files from these directories
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
+]
+
+# For production - where collectstatic puts all static files
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Static files finders - Django uses these to find static files
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
+
+# Staticfiles finders - ensure Django can find admin and other app static files
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
 # Media files (User uploaded files)

@@ -129,13 +129,12 @@ jobs:
           docker-compose --env-file /home/ubuntu/.env-l3net up -d
 
           # Wait for services to be ready
-          # sleep 10
+          sleep 10
+
+          docker compose exec -T l3net_web python manage.py makemigrations
 
           # Run database migrations
-          # docker compose exec -T web python manage.py migrate
-
-          # Collect static files
-          # docker compose exec -T web python manage.py collectstatic --noinput
+          docker compose exec -T l3net_web python manage.py migrate
 
           docker rmi ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:latest || true
 

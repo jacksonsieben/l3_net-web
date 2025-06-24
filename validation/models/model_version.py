@@ -8,4 +8,4 @@ class ModelVersion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when the model version was created")
     updated_at = models.DateTimeField(auto_now=True, help_text="Timestamp when the model version was last updated")
     description = models.TextField(blank=True, null=True, help_text="Description of the model version")
-    model_path = models.CharField(max_length=255, help_text="Path to the model file")
+    model_path = models.CharField(max_length=255, blank=True, null=True, help_text="Path to the model file")

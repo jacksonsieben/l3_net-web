@@ -17,6 +17,16 @@
     </div>
     
     <div class="flex gap-2">
+      {% if is_superuser %}
+        <a href="{% url 'validation:admin_exam_create' %}" 
+           class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded transition">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Create Exam
+        </a>
+      {% endif %}
+      
       {% if filtered_run %}
         <a href="{% url 'validation:exam_list' %}" 
            class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition">

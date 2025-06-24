@@ -2,6 +2,9 @@
 import os
 from .base import *
 
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
+    raise ValueError("ALLOWED_HOSTS environment variable must be set in production")
 # Override settings for production
 DEBUG = False
 
@@ -36,7 +39,6 @@ STATIC_ROOT = '/app/staticfiles'
 MEDIA_ROOT = '/app/media'
 
 # Allowed hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 # Logging
 LOGGING = {

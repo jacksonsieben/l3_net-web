@@ -5,7 +5,7 @@ from django.http import JsonResponse, Http404, HttpResponseRedirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.contrib.auth import get_user_model
 from django import forms
 
@@ -387,7 +387,7 @@ class ExamCreationForm(forms.ModelForm):
         fields = ['external_id', 'image_path']
         widgets = {
             'external_id': forms.TextInput(attrs={'placeholder': 'e.g., EXAM-2025-001'}),
-            'image_path': forms.URLInput(attrs={'placeholder': 'https://example.com/image.png'}),
+            'image_path': forms.TextInput(attrs={'placeholder': 'e.g., /path/to/image.png or https://example.com/image.png'}),
         }
 
 
@@ -398,15 +398,20 @@ class ExamEditForm(forms.ModelForm):
         fields = ['external_id', 'image_path']
         widgets = {
             'external_id': forms.TextInput(attrs={'placeholder': 'e.g., EXAM-2025-001'}),
-            'image_path': forms.URLInput(attrs={'placeholder': 'https://example.com/image.png'}),
+            'image_path': forms.TextInput(attrs={'placeholder': 'e.g., /path/to/image.png or https://example.com/image.png'}),
         }
     
     def clean_external_id(self):
-        external_id = self.cleaned_data['external_id']
-        # Exclude current instance from uniqueness check
-        queryset = Exam.objects.filter(external_id=external_id)
-        if self.instance and self.instance.pk:
-            queryset = queryset.exclude(pk=self.instance.pk)
+        """Validate that external_id is unique, excluding current instance."""
+        external_id = self.cleaned_data.get('external_id')
+        if external_id:
+            # Exclude current instance from uniqueness check
+            qs = Exam.objects.filter(external_id=external_id)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("An exam with this External ID already exists.")
+        return external_id
         
         if queryset.exists():
             raise forms.ValidationError("An exam with this external ID already exists.")

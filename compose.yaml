@@ -18,7 +18,7 @@ services:
     depends_on:
       - db
     volumes:
-      - static_volume:/app/static
+      - /home/ubuntu/l3net-web/static:/app/static
 
   db:
     image: postgres:17
@@ -35,4 +35,3 @@ services:
 
 volumes:
   postgres_data:
-  static_volume:

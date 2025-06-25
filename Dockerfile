@@ -29,9 +29,6 @@ COPY . /app/
 # Create directories for static and media files
 RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
 # Create a non-root user
 RUN groupadd -r django && useradd -r -g django django
 RUN chown -R django:django /app

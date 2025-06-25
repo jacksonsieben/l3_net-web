@@ -5,6 +5,7 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
+ENV DJANGO_SETTINGS_MODULE=l3net_web.settings.production
 
 # Set work directory
 WORKDIR /app
@@ -29,7 +30,7 @@ COPY . /app/
 RUN mkdir -p /app/staticfiles /app/media
 
 # Collect static files
-# RUN python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput
 
 # Create a non-root user
 RUN groupadd -r django && useradd -r -g django django

@@ -3,7 +3,8 @@ from .base import *
 
 # Override settings for production
 DEBUG = True
-
+STATIC_ROOT = '/app/staticfiles'
+MEDIA_ROOT = '/app/media'
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-*3o)i**vxk@$8lt9!%ts1j(4=bvesubqk^l8h=9v0%$+t1d*h3')
 

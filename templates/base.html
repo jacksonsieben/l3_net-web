@@ -6,6 +6,12 @@
     <title>
       {% block title %}L3Net - Spinal Stenosis Validation{% endblock %}
     </title>
+    
+    <!-- Favicon -->
+    {% load static %}
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     {% block extra_head %}{% endblock %}
   </head>

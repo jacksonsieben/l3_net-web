@@ -1,47 +1,246 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>L3Net – Home</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .inline {
-      display: inline-block;
-    }
-  </style>
-</head>
-<body class="bg-gray-100 text-gray-800">
-  <div class="min-h-screen flex items-center justify-center">
-    <div class="text-center p-10 bg-white shadow-md rounded-2xl max-w-md">
-      <h1 class="text-3xl font-bold mb-4 text-blue-600">Welcome to L3Net</h1>
+{% extends "base.html" %}
+
+{% block title %}L3Net - Spinal Stenosis Validation Platform{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-gradient-to-br from-blue-600 to-purple-700 text-white">
+  <div class="container mx-auto px-4 py-16">
+    <div class="text-center max-w-4xl mx-auto">
+      <h1 class="text-5xl font-bold mb-6">Welcome to L3Net</h1>
+      <p class="text-xl mb-8 opacity-90">
+        Advanced AI-powered platform for spinal stenosis validation and medical image analysis
+      </p>
+      
       {% if user.is_authenticated %}
-        <p class="mb-4">Hello, {{ user.full_name }}!</p>
-        <div class="mb-6 space-y-4">
-          <a href="{% url 'validation:run_assignment_list' %}" class="block text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600">
-            View My Assignments
-          </a>
-          {% if user.is_superuser %}
-          <a href="{% url 'validation:exam_list' %}" class="block text-white bg-purple-500 px-4 py-2 rounded hover:bg-purple-600">
-            Admin: View All Exams
-          </a>
-          {% endif %}
-        </div>
-        <form method="post" action="{% url 'users:logout' %}" class="inline">
-          {% csrf_token %}
-          <button type="submit" class="text-white bg-red-500 px-4 py-2 rounded hover:bg-red-600">
-            Logout
-          </button>
-        </form>
-      {% else %}
-        <p class="mb-4">Please login or register to validate medical images.</p>
-        <div class="space-x-4">
-          <a href="{% url 'users:login' %}" class="text-white bg-blue-500 px-4 py-2 rounded hover:bg-blue-600">
-            Login
-          </a>
+        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8">
+          <h2 class="text-2xl font-semibold mb-4">Welcome back, {{ user.full_name }}!</h2>
+          <p class="text-lg opacity-90 mb-6">Ready to continue your validation work?</p>
           
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{% url 'validation:run_assignment_list' %}" 
+               class="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-6 rounded-lg transition transform hover:scale-105">
+              <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              View My Assignments
+            </a>
+            
+            {% if user.is_superuser %}
+            <a href="{% url 'validation:exam_list' %}" 
+               class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition transform hover:scale-105">
+              <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+              </svg>
+              Admin Dashboard
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8">
+          <p class="text-lg opacity-90 mb-6">Join our platform to start validating medical images and contribute to AI research</p>
+          
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{% url 'users:login' %}" 
+               class="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-6 rounded-lg transition transform hover:scale-105">
+              <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+              </svg>
+              Login to Platform
+            </a>
+          </div>
         </div>
       {% endif %}
     </div>
   </div>
-</body>
-</html>
+</div>
+
+<!-- Features Section -->
+<div class="container mx-auto px-4 py-16">
+  <div class="text-center mb-12">
+    <h2 class="text-3xl font-bold text-gray-800 mb-4">Platform Features</h2>
+    <p class="text-gray-600 max-w-2xl mx-auto">
+      Our advanced platform provides comprehensive tools for medical image validation and analysis
+    </p>
+  </div>
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <!-- AI-Powered Analysis -->
+    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+      <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-3">AI-Powered Analysis</h3>
+      <p class="text-gray-600">
+        Advanced machine learning algorithms for accurate spinal stenosis detection and classification
+      </p>
+    </div>
+    
+    <!-- Expert Validation -->
+    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+      <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-3">Expert Validation</h3>
+      <p class="text-gray-600">
+        Collaborative validation workflow with medical professionals to ensure accuracy and reliability
+      </p>
+    </div>
+    
+    <!-- Comprehensive Reporting -->
+    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+      <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-3">Comprehensive Reporting</h3>
+      <p class="text-gray-600">
+        Detailed analytics and reporting tools for tracking validation progress and outcomes
+      </p>
+    </div>
+    
+    <!-- Secure Platform -->
+    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+      <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-3">Secure Platform</h3>
+      <p class="text-gray-600">
+        HIPAA-compliant infrastructure ensuring patient data privacy and security at all times
+      </p>
+    </div>
+    
+    <!-- Real-time Collaboration -->
+    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+      <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-3">Real-time Collaboration</h3>
+      <p class="text-gray-600">
+        Seamless collaboration tools for teams to work together on validation assignments
+      </p>
+    </div>
+    
+    <!-- Advanced Visualization -->
+    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+      <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-3">Advanced Visualization</h3>
+      <p class="text-gray-600">
+        Interactive medical image visualization tools with annotation and measurement capabilities
+      </p>
+    </div>
+  </div>
+</div>
+
+{% if user.is_authenticated %}
+<!-- Quick Stats Section for Authenticated Users -->
+<div class="bg-gray-50 py-16">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-800 mb-4">Your Activity Overview</h2>
+      <p class="text-gray-600">Track your progress and contributions to the platform</p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+      <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">Active Assignments</h3>
+        <p class="text-gray-600">View and manage your current validation tasks</p>
+        <a href="{% url 'validation:run_assignment_list' %}" 
+           class="inline-block mt-4 text-blue-600 hover:text-blue-800 font-medium">
+          View Assignments →
+        </a>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">Account Settings</h3>
+        <p class="text-gray-600">Manage your profile and security settings</p>
+        <a href="{% url 'users:change_password' %}" 
+           class="inline-block mt-4 text-green-600 hover:text-green-800 font-medium">
+          Update Settings →
+        </a>
+      </div>
+      
+      {% if user.is_superuser %}
+      <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">Admin Panel</h3>
+        <p class="text-gray-600">Manage users, exams, and validation runs</p>
+        <a href="{% url 'validation:exam_list' %}" 
+           class="inline-block mt-4 text-purple-600 hover:text-purple-800 font-medium">
+          Admin Dashboard →
+        </a>
+      </div>
+      {% else %}
+      <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">Need Help?</h3>
+        <p class="text-gray-600">Access documentation and support resources</p>
+        <a href="#" class="inline-block mt-4 text-indigo-600 hover:text-indigo-800 font-medium">
+          Get Support →
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Call to Action Section -->
+<div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+  <div class="container mx-auto px-4 text-center">
+    <h2 class="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+    <p class="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
+      Join the future of medical image validation and contribute to advancing AI-assisted healthcare
+    </p>
+    
+    {% if not user.is_authenticated %}
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'users:login' %}" 
+         class="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition transform hover:scale-105">
+        Login to Platform
+      </a>
+    </div>
+    {% else %}
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'validation:run_assignment_list' %}" 
+         class="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition transform hover:scale-105">
+        Continue Validation Work
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

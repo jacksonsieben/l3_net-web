@@ -102,6 +102,7 @@ jobs:
 
           # AWS Configuration
           AWS_REGION=${{ vars.AWS_REGION }}
+          HF_TOKEN=${{ secrets.HF_TOKEN }}
           ENVEOF
 
           # Export variables for the remote session
@@ -117,6 +118,7 @@ jobs:
           export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
           export ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
           export ECR_REGISTRY="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+          export HF_TOKEN="${{ secrets.HF_TOKEN }}"
           
           # Source the environment variables
           source /home/ubuntu/.env-l3net

@@ -15,6 +15,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: db
       DB_PORT: 5432
+      HF_TOKEN: ${HF_TOKEN}
     depends_on:
       - db
     volumes:

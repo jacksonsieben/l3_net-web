@@ -7,6 +7,7 @@ urlpatterns = [
     path('', views.RunAssignmentListView.as_view(), name='run_assignment_list'),
     path('exams/', views.ExamListView.as_view(), name='exam_list'),
     path('exams/<int:pk>/', views.ExamDetailView.as_view(), name='exam_detail'),
+    path('exams/<int:exam_id>/image/<int:run_id>/', views.stream_exam_image, name='exam_image'),
     path('api/exam/<int:pk>/', views.get_exam_data, name='get_exam_data'),
     
     # Admin-only URLs

@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView, DetailView, CreateView, FormView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse, Http404, HttpResponseRedirect
+from django.http import JsonResponse, Http404, HttpResponseRedirect, HttpResponse, StreamingHttpResponse
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
@@ -9,6 +9,8 @@ from django.urls import reverse_lazy, reverse
 from django.contrib.auth import get_user_model
 from django import forms
 from django.db.models import Count, Q
+import os
+from huggingface_hub import hf_hub_download
 
 User = get_user_model()
 
@@ -305,7 +307,7 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
                     # Find the closest vertebra for this severity
                     for vertebra in vertebrae:
                         severity_predictions.append({
-                            # 'vertebra_name': vertebra.name,
+                            'vertebrae_level': severity.vertebrae_level,
                             'id': severity.id,
                             'severity_name': severity.severity_name,
                             'confidence': severity.confidence * 100,  # Convert to percentage
@@ -738,3 +740,53 @@ class AdminRunAssignView(FormView):
             messages.warning(self.request, f'Run "{run.name}" is already assigned to {user.email}.')
         
         return super().form_valid(form)
+
+def stream_exam_image(request, exam_id, run_id):
+    """Stream exam image from Hugging Face dataset."""
+    # Get the exam to verify access
+    exam = get_object_or_404(Exam, id=exam_id)
+    
+    # Check if user has access to this exam
+    if not request.user.is_superuser:
+        has_assignment = RunAssignment.objects.filter(
+            user=request.user,
+            run__exams=exam
+        ).exists()
+        
+        if not has_assignment:
+            raise Http404("You don't have permission to view this exam image.")
+    
+    try:
+        # Get Hugging Face token from environment
+        hf_token = os.environ.get('HF_TOKEN')
+        if not hf_token:
+            return HttpResponse("Hugging Face token not configured", status=500)
+        
+        # Construct the file path in the dataset
+        file_path = f"validation/{exam.external_id}.jpg"
+        
+        # Download the image from Hugging Face
+        repo_id = "sieben-ips/l3net"
+        
+        # Use hf_hub_download to get the file
+        downloaded_file = hf_hub_download(
+            repo_id=repo_id,
+            filename=file_path,
+            token=hf_token,
+            repo_type="dataset"
+        )
+        
+        # Read and stream the original image without modifications
+        with open(downloaded_file, 'rb') as f:
+            image_data = f.read()
+        
+        response = HttpResponse(image_data, content_type='image/jpeg')
+        response['Cache-Control'] = 'max-age=3600'  # Cache for 1 hour
+        return response
+        
+    except Exception as e:
+        # Log the error (you might want to use proper logging)
+        print(f"Error streaming image for exam {exam_id}: {str(e)}")
+        return HttpResponse("Image not found", status=404)
+
+

@@ -58,6 +58,16 @@ Validation{% endblock %} {% block extra_head %}
     padding: 1rem;
     z-index: 10;
   }
+  .dark .annotation-controls {
+    background-color: rgba(31, 41, 55, 0.9);
+    border-top: 1px solid #4b5563;
+  }
+  .prediction-item-selected {
+    background-color: #dbeafe !important; /* bg-blue-50 */
+  }
+  .dark .prediction-item-selected {
+    background-color: #1e3a8a !important; /* dark blue for dark mode */
+  }
   .tooltip {
     position: absolute;
     padding: 0.5rem;
@@ -73,7 +83,7 @@ Validation{% endblock %} {% block extra_head %}
 {% endblock %} {% block content %}
 <div class="container mx-auto px-4 py-6">
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-blue-600">
+    <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400">
       Exam: {{ exam.external_id }}
     </h1>
     <div class="flex gap-2">
@@ -99,18 +109,18 @@ Validation{% endblock %} {% block extra_head %}
       {% endif %}
       <a
         href="{% url 'validation:run_assignment_list' %}"
-        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition"
+        class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded transition"
       >
         Back to Assignments
       </a>
     </div>
   </div>
 
-  <div class="bg-white rounded-lg shadow-lg p-6">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-colors">
     <div class="flex flex-col lg:flex-row">
       <!-- Left Panel: Image Display with Annotations -->
       <div class="w-full lg:w-3/4 lg:pr-6">
-        <div id="image-container" class="border border-gray-300 rounded">
+        <div id="image-container" class="border border-gray-300 dark:border-gray-600 rounded transition-colors">
           {% if exam.image_path %}
           <img
             id="annotation-image"
@@ -120,7 +130,7 @@ Validation{% endblock %} {% block extra_head %}
           
         {% else %}
           <div
-            class="flex items-center justify-center h-64 bg-gray-100 text-gray-500"
+            class="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
           >
             <p>No image available</p>
           </div>
@@ -130,36 +140,36 @@ Validation{% endblock %} {% block extra_head %}
 
         <div class="annotation-controls flex flex-wrap gap-3">
           <div>
-            <label class="mr-2 font-medium">Zoom:</label>
+            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Zoom:</label>
             <button
               id="zoom-in"
-              class="bg-blue-500 text-white px-3 py-1 rounded"
+              class="bg-blue-500 dark:bg-blue-900 text-white px-3 py-1 rounded"
             >
               +
             </button>
             <button
               id="zoom-reset"
-              class="bg-gray-300 text-gray-800 px-3 py-1 rounded"
+              class="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1 rounded transition-colors"
             >
               Reset
             </button>
             <button
               id="zoom-out"
-              class="bg-blue-500 text-white px-3 py-1 rounded"
+              class="bg-blue-500 dark:bg-blue-900 text-white px-3 py-1 rounded"
             >
               -
             </button>
           </div>
 
           <div>
-            <label class="mr-2 font-medium">Show:</label>
+            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Show:</label>
             <label class="inline-flex items-center">
               <input
                 type="checkbox"
                 id="show-vertebrae"
                 class="form-checkbox"
               />
-              <span class="ml-1">Vertebrae</span>
+              <span class="ml-1 text-gray-700 dark:text-gray-300">Vertebrae</span>
             </label>
             <label class="inline-flex items-center ml-3">
               <input
@@ -168,12 +178,12 @@ Validation{% endblock %} {% block extra_head %}
                 class="form-checkbox"
                 checked
               />
-              <span class="ml-1">Severity</span>
+              <span class="ml-1 text-gray-700 dark:text-gray-300">Severity</span>
             </label>
           </div>
 
           <div>
-            <label class="mr-2 font-medium">Opacity:</label>
+            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Opacity:</label>
             <input
               type="range"
               id="box-opacity"
@@ -189,34 +199,34 @@ Validation{% endblock %} {% block extra_head %}
 
       <!-- Right Panel: Prediction Details -->
       <div class="w-full lg:w-1/4 mt-6 lg:mt-0">
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <h3 class="text-xl font-semibold mb-4">Prediction Details</h3>
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg transition-colors">
+          <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Prediction Details</h3>
 
           {% if run %}
           <div class="mb-4">
-            <p>
+            <p class="text-gray-700 dark:text-gray-300">
               <span class="font-medium">Run Date:</span> {{ run.run_date|date:"F j, Y H:i" }}
             </p>
           </div>
           
           {% if validation_progress %}
-          <div class="mb-4 p-3 bg-blue-50 rounded-lg">
-            <h4 class="text-sm font-medium text-blue-800 mb-2">Validation Progress</h4>
+          <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg transition-colors">
+            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Validation Progress</h4>
             <div class="flex items-center mb-2">
-              <div class="flex-1 bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ validation_progress.percentage_complete }}%"></div>
+              <div class="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                <div class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full" style="width: {{ validation_progress.percentage_complete }}%"></div>
               </div>
-              <span class="ml-2 text-sm font-medium text-blue-800">{{ validation_progress.percentage_complete }}%</span>
+              <span class="ml-2 text-sm font-medium text-blue-800 dark:text-blue-200">{{ validation_progress.percentage_complete }}%</span>
             </div>
-            <p class="text-xs text-blue-700">
+            <p class="text-xs text-blue-700 dark:text-blue-300">
               {{ validation_progress.validated_predictions }}/{{ validation_progress.total_predictions }} predictions validated
             </p>
             {% if validation_progress.is_complete %}
-              <span class="inline-block mt-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+              <span class="inline-block mt-1 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
                 ✓ Complete
               </span>
             {% else %}
-              <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+              <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded">
                 {{ validation_progress.remaining_predictions }} remaining
               </span>
             {% endif %}
@@ -224,11 +234,11 @@ Validation{% endblock %} {% block extra_head %}
           {% endif %}
 
           <div class="mb-4">
-            <h4 class="text-lg font-medium mb-2">Predictions</h4>
+            <h4 class="text-lg font-medium mb-2 text-gray-800 dark:text-gray-200">Predictions</h4>
             <ul class="space-y-2" id="prediction-list">
               {% for prediction in severity_predictions %}
               <li
-                class="text-sm p-2 rounded hover:bg-white cursor-pointer prediction-item"
+                class="text-sm p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer prediction-item text-gray-700 dark:text-gray-300 transition-colors"
                 data-severity="{{ prediction.severity_name }}"
                 data-confidence="{{ prediction.confidence|floatformat:2 }}"
                 data-x1="{{ prediction.bounding_box.x1 }}"
@@ -253,7 +263,7 @@ Validation{% endblock %} {% block extra_head %}
             </ul>
           </div>
           {% else %}
-          <p class="text-gray-600">
+          <p class="text-gray-600 dark:text-gray-400">
             No prediction data available for this exam.
           </p>
           {% endif %}
@@ -585,9 +595,9 @@ Validation{% endblock %} {% block extra_head %}
               item.addEventListener('click', function() {
                   // Highlight this item
                   document.querySelectorAll('.prediction-item').forEach(i => {
-                      i.classList.remove('bg-blue-50');
+                      i.classList.remove('prediction-item-selected');
                   });
-                  this.classList.add('bg-blue-50');
+                  this.classList.add('prediction-item-selected');
 
                   // Find and highlight corresponding box
                   const boxes = document.querySelectorAll('.bounding-box');

@@ -1,57 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>L3Net – Admin: Create User</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  {% load widget_tweaks %}
-  <style>
-    /* Hide only error messages, not password requirement indicators */
-    form .error, .errorlist, form .errorlist, .errorlist li, #email-error, #full-name-error, #password1-error, #password2-error, #non-field-error {
-      display: none !important;
-    }
-    /* Ensure proper styling for toast container */
-    #toast-container {
-      min-width: 280px;
-      z-index: 9999;
-    }
-    /* Preserve specific styling for password requirement checks */
-    #length-check, #uppercase-check, #lowercase-check, #number-check, #special-check {
-      display: flex !important;
-    }
-  </style>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen text-gray-800 relative">
-  <!-- Toast notification container -->
-  <div id="toast-container" class="fixed top-4 right-4 z-[1000] transition-all duration-300 flex flex-col gap-2 w-full max-w-md"></div>
-  
-  <div class="bg-white p-10 rounded-xl shadow-md w-full max-w-md">
-    <h2 class="text-3xl font-bold text-violet-600 mb-6 text-center">Create New User Account</h2>
-    <form method="post">
-      {% csrf_token %}
-      
-      <div class="space-y-6">
-        <!-- Full Name field -->
-        <div>
-          <label for="{{ form.full_name.id_for_label }}" class="block text-sm font-medium text-gray-700">
-            {{ form.full_name.label }} <span class="text-red-500">*</span>
-          </label>
-          <div class="mt-1">
-            {% render_field form.full_name class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-violet-500 focus:border-violet-500" placeholder="Enter your full name" %}
-          </div>
-          {% if form.full_name.errors %}
-            <p class="hidden" id="full-name-error">{{ form.full_name.errors }}</p>
-          {% endif %}
-          <p id="full-name-required" class="hidden mt-2 text-xs text-red-500">Full name is required</p>
-        </div>
+{% extends "base.html" %}
+{% load widget_tweaks %}
 
-        <!-- Email field -->
-        <div>
-            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">
+{% block title %}L3Net – Admin: Create User{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Hide only error messages, not password requirement indicators */
+  form .error, .errorlist, form .errorlist, .errorlist li, #email-error, #full-name-error, #password1-error, #password2-error, #non-field-error {
+    display: none !important;
+  }
+  /* Preserve specific styling for password requirement checks */
+  #length-check, #uppercase-check, #lowercase-check, #number-check, #special-check {
+    display: flex !important;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div class="bg-white dark:bg-gray-800 p-10 rounded-xl shadow-md transition-colors">
+      <h2 class="text-3xl font-bold text-violet-600 dark:text-violet-400 mb-6 text-center">Create New User Account</h2>
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="space-y-6">
+          <!-- Full Name field -->
+          <div>
+            <label for="{{ form.full_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ form.full_name.label }} <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-1">
+              {% render_field form.full_name class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-violet-500 focus:border-violet-500" placeholder="Enter your full name" %}
+            </div>
+            {% if form.full_name.errors %}
+              <p class="hidden" id="full-name-error">{{ form.full_name.errors }}</p>
+            {% endif %}
+            <p id="full-name-required" class="hidden mt-2 text-xs text-red-500">Full name is required</p>
+          </div>
+
+          <!-- Email field -->
+          <div>
+            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {{ form.email.label }} <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
-                {% render_field form.email class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-violet-500 focus:border-violet-500" placeholder="your.email@example.com" %}
+                {% render_field form.email class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-violet-500 focus:border-violet-500" placeholder="your.email@example.com" %}
             </div>
 
         <!-- Backend error (hidden for toast handling) -->
@@ -66,17 +60,17 @@
         
         <!-- Password field with improved requirements display -->
         <div>
-          <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-gray-700">
+          <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ form.password1.label }}
           </label>
           <div class="mt-1 relative">
-            {% render_field form.password1 class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-violet-500 focus:border-violet-500" id="password-field" %}
+            {% render_field form.password1 class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-violet-500 focus:border-violet-500" id="password-field" %}
             <button type="button" class="toggle-password absolute inset-y-0 right-0 px-3 flex items-center" data-target="password-field" aria-label="Toggle password visibility">
-              <svg xmlns="http://www.w3.org/2000/svg" class="eye-icon h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="eye-icon h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              <svg xmlns="http://www.w3.org/2000/svg" class="eye-off-icon h-5 w-5 text-gray-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="eye-off-icon h-5 w-5 text-gray-500 dark:text-gray-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
               </svg>
             </button>
@@ -86,8 +80,8 @@
           {% endif %}
           
           <!-- Password requirements with dynamic indicators -->
-          <div class="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-md">
-            <h4 class="text-xs font-medium text-gray-700 mb-2">Password requirements:</h4>
+          <div class="mt-3 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-md transition-colors">
+            <h4 class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Password requirements:</h4>
             <ul class="space-y-1 text-xs">
               <li id="length-check" class="flex items-center text-red-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,17 +119,17 @@
         
         <!-- Password confirmation field -->
         <div>
-          <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700">
+          <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ form.password2.label }}
           </label>
           <div class="mt-1 relative">
-            {% render_field form.password2 class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-violet-500 focus:border-violet-500" id="confirm-password-field" %}
+            {% render_field form.password2 class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-violet-500 focus:border-violet-500" id="confirm-password-field" %}
             <button type="button" class="toggle-password absolute inset-y-0 right-0 px-3 flex items-center" data-target="confirm-password-field" aria-label="Toggle password visibility">
-              <svg xmlns="http://www.w3.org/2000/svg" class="eye-icon h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="eye-icon h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              <svg xmlns="http://www.w3.org/2000/svg" class="eye-off-icon h-5 w-5 text-gray-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="eye-off-icon h-5 w-5 text-gray-500 dark:text-gray-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
               </svg>
             </button>
@@ -156,15 +150,21 @@
         {% endif %}
       </div>
       
-      <button type="submit" id="register-button" disabled class="w-full mt-6 bg-violet-400 text-white py-2 rounded-lg transition cursor-not-allowed" title="Please meet all password requirements">
+      <button type="submit" id="register-button" disabled class="w-full mt-6 bg-violet-400 dark:bg-violet-500 text-white py-2 rounded-lg transition cursor-not-allowed" title="Please meet all password requirements">
         Register
       </button>
     </form>
-    <div class="mt-4 text-sm text-center text-gray-600">
+    <div class="mt-4 text-sm text-center text-gray-600 dark:text-gray-400">
       <p class="mb-2">Admin panel - Create user accounts</p>
-      <a href="{% url 'home' %}" class="text-blue-500 hover:underline">Back to Home</a>
+      <div class="text-center">
+        <a href="{% url 'home' %}" class="text-sm text-blue-600 hover:text-blue-500">
+          ← Back to Home
+        </a>
+      </div>
     </div>
   </div>
+</div>
+{% endblock %}
   
   <!-- JavaScript for real-time password validation -->
   <script>

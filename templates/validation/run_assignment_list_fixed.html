@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-blue-600">
+    <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400 transition-colors">
       {% if showing_all_users %}
         All Run Assignments
       {% else %}
@@ -16,7 +16,7 @@
     {% if user.is_superuser %}
     <div class="flex gap-2">
       <a href="{% url 'validation:exam_list' %}" 
-         class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition">
+         class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors">
         View All Exams
       </a>
     </div>
@@ -25,58 +25,58 @@
 
   <!-- Statistics Summary -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
       <div class="flex items-center">
-        <div class="p-2 bg-blue-100 rounded-lg">
-          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg transition-colors">
+          <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
         </div>
         <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600">Total Assignments</p>
-          <p class="text-2xl font-bold text-gray-900">{{ total_assignments }}</p>
+          <p class="text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors">Total Assignments</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 transition-colors">{{ total_assignments }}</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
       <div class="flex items-center">
-        <div class="p-2 bg-green-100 rounded-lg">
-          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg transition-colors">
+          <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
         <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600">Completed</p>
-          <p class="text-2xl font-bold text-gray-900">{{ completed_assignments }}</p>
+          <p class="text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors">Completed</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 transition-colors">{{ completed_assignments }}</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
       <div class="flex items-center">
-        <div class="p-2 bg-yellow-100 rounded-lg">
-          <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg transition-colors">
+          <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
         <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600">Pending</p>
-          <p class="text-2xl font-bold text-gray-900">{{ pending_assignments }}</p>
+          <p class="text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors">Pending</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 transition-colors">{{ pending_assignments }}</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors">
       <div class="flex items-center">
-        <div class="p-2 bg-purple-100 rounded-lg">
-          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg transition-colors">
+          <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
           </svg>
         </div>
         <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600">Progress</p>
-          <p class="text-2xl font-bold text-gray-900">{{ completion_percentage }}%</p>
+          <p class="text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors">Progress</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 transition-colors">{{ completion_percentage }}%</p>
         </div>
       </div>
     </div>
@@ -84,38 +84,38 @@
 
   <!-- Progress Bar -->
   {% if total_assignments > 0 %}
-  <div class="bg-white rounded-lg shadow p-6 mb-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-3">Overall Progress</h3>
-    <div class="w-full bg-gray-200 rounded-full h-3">
-      <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: {{ completion_percentage }}%"></div>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 transition-colors">
+    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 transition-colors">Overall Progress</h3>
+    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 transition-colors">
+      <div class="bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: {{ completion_percentage }}%"></div>
     </div>
-    <p class="text-sm text-gray-600 mt-2">{{ completed_assignments }} of {{ total_assignments }} assignments completed</p>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 transition-colors">{{ completed_assignments }} of {{ total_assignments }} assignments completed</p>
   </div>
   {% endif %}
 
   <!-- Assignments List -->
-  <div class="bg-white rounded-lg shadow">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h3 class="text-lg font-medium text-gray-900">Run Assignments</h3>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-600 transition-colors">
+      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 transition-colors">Run Assignments</h3>
     </div>
     
     {% if assignments %}
-    <div class="divide-y divide-gray-200">
+    <div class="divide-y divide-gray-200 dark:divide-gray-600">
       {% for assignment in assignments %}
-      <div class="p-6 hover:bg-gray-50 transition-colors">
+      <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <div class="flex items-center space-x-4">
               <div class="flex-shrink-0">
                 {% if assignment.is_completed %}
-                  <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
                 {% else %}
-                  <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                   </div>
@@ -124,21 +124,21 @@
               
               <div class="flex-1 min-w-0">
                 <div class="flex items-center space-x-2">
-                  <h4 class="text-lg font-medium text-gray-900">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 transition-colors">
                     {{ assignment.run.name }}
                   </h4>
                   {% if assignment.is_completed %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 transition-colors">
                       Completed
                     </span>
                   {% else %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 transition-colors">
                       Pending
                     </span>
                   {% endif %}
                 </div>
                 
-                <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 transition-colors">
                   <span>{{ assignment.run.exams.count }} exam{{ assignment.run.exams.count|pluralize }}</span>
                   <span>•</span>
                   <span>Assigned: {{ assignment.assigned_at|date:"M j, Y" }}</span>
@@ -154,14 +154,14 @@
                 
                 <!-- Show exams in this run -->
                 <div class="mt-2">
-                  <div class="text-sm text-gray-600">
+                  <div class="text-sm text-gray-600 dark:text-gray-400 transition-colors">
                     Exams: 
                     {% for exam in assignment.run.exams.all %}
-                      <span class="inline-block bg-gray-100 rounded px-2 py-1 text-xs mr-1 mb-1">
+                      <span class="inline-block bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs mr-1 mb-1 transition-colors">
                         {{ exam.external_id }}
                       </span>
                     {% empty %}
-                      <span class="text-gray-400">No exams assigned</span>
+                      <span class="text-gray-400 dark:text-gray-500">No exams assigned</span>
                     {% endfor %}
                   </div>
                 </div>
@@ -169,20 +169,20 @@
                 <!-- Progress information -->
                 <div class="mt-3">
                   <div class="flex justify-between text-sm">
-                    <span class="text-gray-500">Progress</span>
-                    <span class="text-gray-900">{{ assignment.completion_percentage|floatformat:0 }}%</span>
+                    <span class="text-gray-500 dark:text-gray-400 transition-colors">Progress</span>
+                    <span class="text-gray-900 dark:text-gray-100 transition-colors">{{ assignment.completion_percentage|floatformat:0 }}%</span>
                   </div>
-                  <div class="mt-1 bg-gray-200 rounded-full h-2">
-                    <div class="bg-blue-600 h-2 rounded-full" style="width: {{ assignment.completion_percentage }}%"></div>
+                  <div class="mt-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2 transition-colors">
+                    <div class="bg-blue-600 dark:bg-blue-500 h-2 rounded-full" style="width: {{ assignment.completion_percentage }}%"></div>
                   </div>
                 </div>
                 
                 {% if assignment.notes %}
-                <p class="mt-2 text-sm text-gray-600">{{ assignment.notes }}</p>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400 transition-colors">{{ assignment.notes }}</p>
                 {% endif %}
                 
                 {% if assignment.completed_at %}
-                <p class="mt-1 text-sm text-green-600">
+                <p class="mt-1 text-sm text-green-600 dark:text-green-400 transition-colors">
                   <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
@@ -195,7 +195,7 @@
           
           <div class="flex-shrink-0 ml-4">
             <a href="{% url 'validation:exam_list' %}?run={{ assignment.run.id }}" 
-               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors">
               {% if assignment.is_completed %}
                 Review Exams
               {% else %}
@@ -212,11 +212,11 @@
     </div>
     {% else %}
     <div class="p-12 text-center">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
       </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No assignments</h3>
-      <p class="mt-1 text-sm text-gray-500">
+      <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100 transition-colors">No assignments</h3>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors">
         {% if showing_all_users %}
           No run assignments have been created yet.
         {% else %}

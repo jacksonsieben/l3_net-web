@@ -1,25 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>L3Net – Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    {% load widget_tweaks %}
-    <style>
-      /* Hide all inline form errors */
-      .text-red-500, .text-red-600, form .error {
-        display: none !important;
-      }
-    </style>
-  </head>
-  <body
-    class="bg-gray-100 flex items-center justify-center min-h-screen text-gray-800 relative"
-  >
-    <!-- Toast notification container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-[1000] transition-all duration-300 flex flex-col gap-2 w-full max-w-md"></div>
-    
-    <div class="bg-white p-10 rounded-xl shadow-md w-full max-w-md">
-      <h2 class="text-3xl font-bold text-purple-600 mb-6 text-center">
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}L3Net – Login{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Hide all inline form errors */
+  .text-red-500, .text-red-600, form .error {
+    display: none !important;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div class="bg-white dark:bg-gray-800 p-10 rounded-xl shadow-md transition-colors">
+      <h2 class="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-6 text-center">
         L3Net Login
       </h2>
       <form method="post">
@@ -28,11 +25,11 @@
         <div class="space-y-6">
           <!-- Username/Email field -->
           <div>
-            <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">
+            <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ form.username.label }}
             </label>
             <div class="mt-1">
-              {% render_field form.username class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500" %}
+              {% render_field form.username class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-purple-500 focus:border-purple-500" %}
             </div>
             {% if form.username.errors %}
               <p class="hidden" id="username-error">{{ form.username.errors }}</p>
@@ -41,17 +38,19 @@
           
           <!-- Password field -->
           <div>
-            <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">
+            <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ form.password.label }}
             </label>
             <div class="mt-1 relative">
-              {% render_field form.password class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500" id="login-password-field" %}
+              {% render_field form.password class="appearance-none block w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-purple-500 focus:border-purple-500" id="login-password-field" %}
               <button type="button" class="toggle-password absolute inset-y-0 right-0 px-3 flex items-center" data-target="login-password-field" aria-label="Toggle password visibility">
-                <svg xmlns="http://www.w3.org/2000/svg" class="eye-icon h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="eye-icon h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                 </svg>
-                <svg xmlns="http://www.w3.org/2000/svg" class="eye-off-icon h-5 w-5 text-gray-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="eye-off-icon h-5 w-5 text-gray-500 dark:text-gray-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
                 </svg>
               </button>
@@ -73,168 +72,88 @@
         
         <button
           type="submit"
-          class="w-full mt-6 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"
+          class="w-full mt-6 bg-purple-600 dark:bg-purple-700 text-white py-2 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-800 transition"
         >
           Log In
         </button>
       </form>
     </div>
-    
-    <!-- JavaScript for password toggle visibility -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Toggle password visibility
-        document.querySelectorAll('.toggle-password').forEach(button => {
-          button.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const inputField = document.getElementById(targetId);
-            const eyeIcon = this.querySelector('.eye-icon');
-            const eyeOffIcon = this.querySelector('.eye-off-icon');
-            
-            // Toggle password visibility
-            if (inputField.type === 'password') {
-              inputField.type = 'text';
-              eyeIcon.classList.add('hidden');
-              eyeOffIcon.classList.remove('hidden');
-            } else {
-              inputField.type = 'password';
-              eyeIcon.classList.remove('hidden');
-              eyeOffIcon.classList.add('hidden');
-            }
-            
-            // Keep focus on the input field
-            inputField.focus();
-          });
-        });
-        
-        // Process Django messages
-        {% if messages %}
-          {% for message in messages %}
-            showToast("{{ message }}", "{{ message.tags }}");
-          {% endfor %}
-        {% endif %}
-      });
-      
-      // Toast notification system
-      function showToast(message, type = 'error') {
-        if (!message || message.trim() === '') return; // Don't show empty messages
-        
-        const toastContainer = document.getElementById('toast-container');
-        
-        // Create toast element with slide-in animation
-        const toast = document.createElement('div');
-        toast.className = `px-4 py-3 rounded-lg shadow-lg flex items-center justify-between w-full transform transition-all duration-300 translate-x-full opacity-0`;
-        
-        // Set background color based on type
-        if (type === 'error') {
-          toast.classList.add('bg-red-50', 'text-red-700', 'border-l-4', 'border-red-500');
-        } else if (type === 'success') {
-          toast.classList.add('bg-green-50', 'text-green-700', 'border-l-4', 'border-green-500');
-        } else if (type === 'info') {
-          toast.classList.add('bg-blue-50', 'text-blue-700', 'border-l-4', 'border-blue-500');
-        }
-        
-        // Create message and close button
-        toast.innerHTML = `
-          <div class="flex items-center flex-1 pr-2">
-            ${type === 'error' ? `
-              <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-              </svg>
-            ` : type === 'success' ? `
-              <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-              </svg>
-            ` : `
-              <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 4a1 1 0 11-2 0 1 1 0 012 0zm0 4a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"></path>
-              </svg>
-            `}
-            <p class="text-sm">${message}</p>
-          </div>
-          <button class="ml-2 text-gray-500 hover:text-gray-700 focus:outline-none flex-shrink-0">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-            </svg>
-          </button>
-        `;
-        
-        // Add toast to container
-        toastContainer.appendChild(toast);
-        
-        // Trigger animation after a tiny delay (for the browser to process the element)
-        setTimeout(() => {
-          toast.classList.remove('translate-x-full', 'opacity-0');
-        }, 10);
-        
-        // Add click listener to close button
-        toast.querySelector('button').addEventListener('click', function() {
-          removeToast(toast);
-        });
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-          removeToast(toast);
-        }, 5000);
-        
-        return toast;
-      }
-      
-      function removeToast(toast) {
-        // Slide out animation
-        toast.classList.add('opacity-0', 'translate-x-full');
-        setTimeout(() => {
-          toast.remove();
-        }, 300);
-      }
-      
-      // Process form errors and display toasts
-      function showFormErrors() {
-        console.log("Checking form errors...");
-        // Check for form errors
-        const usernameError = document.getElementById('username-error');
-        const passwordError = document.getElementById('password-error');
-        const nonFieldError = document.getElementById('non-field-error');
-        
-        // Show errors as toasts
-        if (usernameError && usernameError.textContent) {
-          console.log("Username error found:", usernameError.textContent);
-          showToast(usernameError.textContent.trim(), 'error');
-        }
-        if (passwordError && passwordError.textContent) {
-          console.log("Password error found:", passwordError.textContent);
-          showToast(passwordError.textContent.trim(), 'error');
-        }
-        if (nonFieldError && nonFieldError.textContent) {
-          console.log("Non-field error found:", nonFieldError.textContent);
-          showToast(nonFieldError.textContent.trim(), 'error');
-        }
-        
-        // If no specific errors were found but there's a form submission error
-        // Show a generic message
-        if (document.querySelectorAll('form .error').length > 0 && 
-            !usernameError && !passwordError && !nonFieldError) {
-          showToast("Please correct the errors in the form.", 'error');
-        }
+  </div>
+</div>
+{% endblock %}
 
-        // Also check if the URL has an error parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('error')) {
-          showToast(decodeURIComponent(urlParams.get('error')), 'error');
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle password visibility
+    document.querySelectorAll('.toggle-password').forEach(button => {
+      button.addEventListener('click', function() {
+        const targetId = this.getAttribute('data-target');
+        const inputField = document.getElementById(targetId);
+        const eyeIcon = this.querySelector('.eye-icon');
+        const eyeOffIcon = this.querySelector('.eye-off-icon');
+        
+        // Toggle password visibility
+        if (inputField.type === 'password') {
+          inputField.type = 'text';
+          eyeIcon.classList.add('hidden');
+          eyeOffIcon.classList.remove('hidden');
+        } else {
+          inputField.type = 'password';
+          eyeIcon.classList.remove('hidden');
+          eyeOffIcon.classList.add('hidden');
         }
+        
+        // Keep focus on the input field
+        inputField.focus();
+      });
+    });
+    
+    // Process form errors and display toasts
+    function showFormErrors() {
+      console.log("Checking form errors...");
+      // Check for form errors
+      const usernameError = document.getElementById('username-error');
+      const passwordError = document.getElementById('password-error');
+      const nonFieldError = document.getElementById('non-field-error');
+      
+      // Show errors as toasts
+      if (usernameError && usernameError.textContent) {
+        console.log("Username error found:", usernameError.textContent);
+        showToast(usernameError.textContent.trim(), 'error');
+      }
+      if (passwordError && passwordError.textContent) {
+        console.log("Password error found:", passwordError.textContent);
+        showToast(passwordError.textContent.trim(), 'error');
+      }
+      if (nonFieldError && nonFieldError.textContent) {
+        console.log("Non-field error found:", nonFieldError.textContent);
+        showToast(nonFieldError.textContent.trim(), 'error');
       }
       
-      // Check if there are errors on page load
-      document.addEventListener('DOMContentLoaded', function() {
-        // Slight delay to ensure DOM is fully processed
-        setTimeout(showFormErrors, 100);
-        
-        // Example of a successful login message (for demonstration)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('message')) {
-          showToast(decodeURIComponent(urlParams.get('message')), 'success');
-        }
-      });
-    </script>
-  </body>
-</html>
+      // If no specific errors were found but there's a form submission error
+      // Show a generic message
+      if (document.querySelectorAll('form .error').length > 0 && 
+          !usernameError && !passwordError && !nonFieldError) {
+        showToast("Please correct the errors in the form.", 'error');
+      }
+
+      // Also check if the URL has an error parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('error')) {
+        showToast(decodeURIComponent(urlParams.get('error')), 'error');
+      }
+    }
+    
+    // Check if there are errors on page load
+    // Slight delay to ensure DOM is fully processed
+    setTimeout(showFormErrors, 100);
+    
+    // Example of a successful login message (for demonstration)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('message')) {
+      showToast(decodeURIComponent(urlParams.get('message')), 'success');
+    }
+  });
+</script>
+{% endblock %}

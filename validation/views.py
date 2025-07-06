@@ -9,6 +9,9 @@ from django.urls import reverse_lazy, reverse
 from django.contrib.auth import get_user_model
 from django import forms
 from django.db.models import Count, Q
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
 import os
 from huggingface_hub import hf_hub_download
 
@@ -21,6 +24,8 @@ from .models.pred_severity import PredSeverity
 from .models.pred_vertebra import PredVertebra
 from .models.model_version import ModelVersion
 from .models.run_assignment import RunAssignment
+from .models.validation import Validation
+from .enums.severity import Severity
 
 User = get_user_model()
 
@@ -50,6 +55,11 @@ class RunAssignmentListView(LoginRequiredMixin, ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        # Update completion status for all assignments before displaying
+        assignments = self.get_queryset()
+        for assignment in assignments:
+            assignment.update_completion_status()
         
         # Add statistics for the current user (or all users if superuser)
         if self.request.user.is_superuser:
@@ -88,7 +98,7 @@ class ExamListView(LoginRequiredMixin, ListView):
         
         # Superusers can see all exams
         if self.request.user.is_superuser:
-            queryset = Exam.objects.prefetch_related('runs').order_by('-created_at')
+            queryset = Exam.objects.prefetch_related('runs').order_by('id')
             if run_id:
                 # Filter by specific run
                 queryset = queryset.filter(runs__id=run_id)
@@ -100,7 +110,7 @@ class ExamListView(LoginRequiredMixin, ListView):
         for assignment in assigned_runs:
             exam_ids.extend(list(assignment.run.exams.values_list('id', flat=True)))
         
-        queryset = Exam.objects.filter(id__in=exam_ids).prefetch_related('runs').order_by('-created_at')
+        queryset = Exam.objects.filter(id__in=exam_ids).prefetch_related('runs').order_by('id')
         
         if run_id:
             # Filter by specific run (only if user has access to that run)
@@ -131,38 +141,88 @@ class ExamListView(LoginRequiredMixin, ListView):
             except Run.DoesNotExist:
                 pass
         
-        # Add assignment information for each exam
-        exam_assignments = {}
+        # Add validation progress information for each exam
+        exam_progress = {}
+        total_percentage = 0
+        exams_with_predictions = 0
+        
         for exam in context['exams']:
-            if self.request.user.is_superuser:
-                # For superusers, show all assignments for this exam
-                assignments = RunAssignment.objects.filter(
-                    run__exams=exam
-                ).select_related('run', 'user')
+            if context['filtered_run']:
+                # Calculate validation progress for this specific exam in the filtered run
+                progress = self._get_exam_validation_progress(exam, context['filtered_run'], self.request.user)
+                exam_progress[exam.id] = progress
                 
-                exam_assignments[exam.id] = {
-                    'assignments': assignments,
-                    'total_assignments': assignments.count(),
-                    'completed_assignments': assignments.filter(is_completed=True).count(),
-                    'all_users': True,  # Flag to indicate this shows all users
-                }
+                # Only count exams that actually have predictions
+                if progress['total_predictions'] > 0:
+                    total_percentage += progress.get('percentage_complete', 0)
+                    exams_with_predictions += 1
             else:
-                # For regular users, show only their assignments
-                assignments = RunAssignment.objects.filter(
-                    user=self.request.user,
-                    run__exams=exam
-                ).select_related('run')
-                
-                exam_assignments[exam.id] = {
-                    'assignments': assignments,
-                    'total_assignments': assignments.count(),
-                    'completed_assignments': assignments.filter(is_completed=True).count(),
-                    'all_users': False,
+                # If no specific run is filtered, we can't show validation progress
+                exam_progress[exam.id] = {
+                    'total_predictions': 0,
+                    'validated_predictions': 0,
+                    'status': 'no_run_filter'
                 }
         
-        context['exam_assignments'] = exam_assignments
-        context['is_superuser'] = self.request.user.is_superuser
+        # Calculate average percentage only for exams with predictions
+        if exams_with_predictions > 0:
+            exam_progress['total_percentage'] = round(total_percentage / exams_with_predictions, 1)
+        else:
+            exam_progress['total_percentage'] = 0
+            
+        print("Exam progress data:", exam_progress)
+        
+        context['exam_progress'] = exam_progress
         return context
+    
+    def _get_exam_validation_progress(self, exam, run, user):
+        """Calculate validation progress for a specific exam, run, and user."""
+        # Get all severity predictions for this specific exam and run
+        predictions = PredSeverity.objects.filter(
+            exam_id=exam,
+            run_id=run
+        )
+
+        if predictions.count() == 0:
+            return {
+                'total_predictions': 0,
+                'validated_predictions': 0,
+                'remaining_predictions': 0,
+                'percentage_complete': 0,
+                'status': 'no_predictions'
+            }
+        
+        validated_predictions = 0
+        for prediction in predictions:
+            # Count how many have been validated AND submitted by this user
+            validations = Validation.objects.filter(
+                pred_severity_id=prediction.id,
+                user_id=user.id
+            ).count()
+            
+            if validations != 0:
+                validated_predictions += validations
+
+        print("Validated predictions for exam {}, run {}: {}".format(exam.id, run.id, validated_predictions))
+
+        # Determine status based on validation progress
+        if validated_predictions == 0:
+            status = 'pending'
+            percentage = 0
+        elif validated_predictions >= predictions.count():
+            status = 'all_validated'
+            percentage = 100
+        else:
+            status = 'partially_validated'
+            percentage = (validated_predictions / predictions.count()) * 100
+        
+        return {
+            'total_predictions': predictions.count(),
+            'validated_predictions': validated_predictions,
+            'remaining_predictions': predictions.count() - validated_predictions,
+            'percentage_complete': round(percentage, 1),
+            'status': status
+        }
 
 class ExamDetailView(LoginRequiredMixin, DetailView):
     """View to display an individual exam with its predictions for validation."""
@@ -291,53 +351,141 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
             else:
                 return context
         
-        # Get severity and vertebrae predictions for the run
+        # Get severity and vertebrae predictions for this specific exam and run
         if 'run' in context:
             run = context['run']
+            current_exam = self.object
             severity_predictions = []
             vertebrae_predictions = []
             
-            # Get all severities for this run
-            severities = PredSeverity.objects.filter(run_id=run)
-            vertebrae = PredVertebra.objects.filter(run_id=run)
+            # Get severities for this specific exam and run
+            severities = PredSeverity.objects.filter(run_id=run, exam_id=current_exam)
+            vertebrae = PredVertebra.objects.filter(run_id=run, exam_id=current_exam)
             
-            for severity in severities:
-                # Check if severity has a bounding box
-                if hasattr(severity, 'bounding_box') and severity.bounding_box:
-                    # Find the closest vertebra for this severity
-                    for vertebra in vertebrae:
-                        severity_predictions.append({
-                            'vertebrae_level': severity.vertebrae_level,
-                            'id': severity.id,
-                            'severity_name': severity.severity_name,
-                            'confidence': severity.confidence * 100,  # Convert to percentage
-                            'bounding_box': {
-                                'x1': severity.bounding_box.x1,
-                                'y1': severity.bounding_box.y1,
-                                'x2': severity.bounding_box.x2,
-                                'y2': severity.bounding_box.y2,
-                            }
-                        })
-                        # Just add one association for demo purposes
-                        break
-            
-            for vertebra in vertebrae:
-                vertebrae_predictions.append({
-                    'vertebra_name': vertebra.name,
-                    'confidence': vertebra.confidence * 100,  # Convert to percentage
-                    'polygon': {
-                        'x1': vertebra.polygon.x1,
-                        'y1': vertebra.polygon.y1,
-                        'x2': vertebra.polygon.x2,
-                        'y2': vertebra.polygon.y2,
-                    }
-                })
-            
-            context['vertebrae'] = vertebrae
-            context['severity_predictions'] = severity_predictions
-            context['vertebrae_predictions'] = vertebrae_predictions
-            
+            # Check if there are any predictions for this exam
+            if not severities.exists() and not vertebrae.exists():
+                context['no_predictions'] = True
+                context['severity_predictions'] = []
+                context['vertebrae_predictions'] = []
+            else:
+                # Get existing validations for the current user and this exam's predictions
+                existing_validations = Validation.objects.filter(
+                    pred_severity_id__run_id=run,
+                    pred_severity_id__exam_id=current_exam,
+                    user_id=self.request.user
+                ).select_related('pred_severity_id')
+                
+                # Create a mapping of prediction_id -> validation
+                validations = {}
+                for validation in existing_validations:
+                    validations[validation.pred_severity_id.id] = validation
+                
+                for severity in severities:
+                    # Check if severity has a bounding box
+                    if hasattr(severity, 'bounding_box') and severity.bounding_box:
+                        validation = validations.get(severity.id)
+                        # Find the closest vertebra for this severity
+                        for vertebra in vertebrae:
+                            severity_predictions.append({
+                                'vertebrae_level': severity.vertebrae_level,
+                                'id': severity.id,
+                                'severity_name': severity.severity_name,
+                                'confidence': severity.confidence * 100,  # Convert to percentage
+                                'bounding_box': {
+                                    'x1': severity.bounding_box.x1,
+                                    'y1': severity.bounding_box.y1,
+                                    'x2': severity.bounding_box.x2,
+                                    'y2': severity.bounding_box.y2,
+                                },
+                                'validation': {
+                                    'id': validation.id if validation else None,
+                                    'severity_name': validation.severity_name if validation else severity.severity_name,
+                                    'is_correct': validation.is_correct if validation else True,
+                                    'is_modified': validation.severity_name != severity.severity_name if validation else False,
+                                    'validated_at': validation.validated_at if validation else None,
+                                    'exists': validation is not None,  # Track if validation exists
+                                }
+                            })
+                            # Just add one association for demo purposes
+                            break
+                
+                for vertebra in vertebrae:
+                    vertebrae_predictions.append({
+                        'vertebra_name': vertebra.name,
+                        'confidence': vertebra.confidence * 100,  # Convert to percentage
+                        'polygon': {
+                            'x1': vertebra.polygon.x1,
+                            'y1': vertebra.polygon.y1,
+                            'x2': vertebra.polygon.x2,
+                            'y2': vertebra.polygon.y2,
+                        }
+                    })
+                
+                context['vertebrae'] = vertebrae
+                context['severity_predictions'] = severity_predictions
+                context['vertebrae_predictions'] = vertebrae_predictions
+        else:
+            # No predictions for this exam
+            context['no_predictions'] = True
+            context['severity_predictions'] = []
+            context['vertebrae_predictions'] = []
+        
+        # Add navigation to next/previous exams (always, regardless of predictions)
+        self._add_navigation_context(context)
+        
         return context
+    
+    def _add_navigation_context(self, context):
+        """Add next/previous exam navigation to context - only within current run."""
+        current_exam = self.object
+        
+        # Only add navigation if we have a run context
+        if 'run' not in context:
+            return
+            
+        current_run = context['run']
+        
+        # Get all exams for the current run, ordered by ID
+        run_exams = current_run.exams.all().order_by('id')
+        
+        # Convert to list to enable indexing
+        exam_list = list(run_exams)
+        
+        # Find current exam index in this run
+        current_index = None
+        for i, exam in enumerate(exam_list):
+            if exam.id == current_exam.id:
+                current_index = i
+                break
+        
+        if current_index is not None:
+            # Get previous exam in the run
+            if current_index > 0:
+                context['previous_exam'] = exam_list[current_index - 1]
+            else:
+                context['previous_exam'] = None
+            
+            # Get next exam in the run
+            if current_index < len(exam_list) - 1:
+                context['next_exam'] = exam_list[current_index + 1]
+            else:
+                context['next_exam'] = None
+            
+            # Add position information within the run
+            context['exam_position'] = {
+                'current': current_index + 1,
+                'total': len(exam_list)
+            }
+            
+            # Add position information
+            context['exam_position'] = {
+                'current': current_index + 1,
+                'total': len(exam_list)
+            }
+        else:
+            context['previous_exam'] = None
+            context['next_exam'] = None
+            context['exam_position'] = {'current': 1, 'total': 1}
 
 def get_exam_data(request, pk):
     """API endpoint to get exam data in JSON format."""
@@ -788,5 +936,108 @@ def stream_exam_image(request, exam_id, run_id):
         # Log the error (you might want to use proper logging)
         print(f"Error streaming image for exam {exam_id}: {str(e)}")
         return HttpResponse("Image not found", status=404)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_validation_severity(request):
+    """API endpoint to update the severity of a validation."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        prediction_id = data.get('prediction_id')
+        new_severity = data.get('severity')
+        
+        if not prediction_id or new_severity is None:
+            return JsonResponse({'error': 'Invalid data'}, status=400)
+        
+        # Validate the new severity value
+        if new_severity not in [severity.value for severity in Severity]:
+            return JsonResponse({'error': 'Invalid severity value'}, status=400)
+        
+        # Get the prediction
+        prediction = PredSeverity.objects.get(id=prediction_id)
+        
+        # Get or create validation for this prediction and user
+        validation, created = Validation.objects.get_or_create(
+            pred_severity_id=prediction,
+            user_id=request.user,
+            defaults={
+                'severity_name': new_severity,  # Use the new severity as default
+                'is_correct': (new_severity == prediction.severity_name),
+            }
+        )
+        
+        # If validation already existed, update it
+        if not created:
+            validation.severity_name = new_severity
+            validation.is_correct = (new_severity == prediction.severity_name)
+            validation.save()
+
+        return JsonResponse({
+            'message': 'Validation updated successfully',
+            'is_modified': not validation.is_correct
+        })
+    except PredSeverity.DoesNotExist:
+        return JsonResponse({'error': 'Prediction not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def submit_all_validations(request):
+    """API endpoint to submit all pending validations for a specific exam."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        run_id = data.get('run_id')
+        exam_id = data.get('exam_id')
+        
+        if not run_id or not exam_id:
+            return JsonResponse({'error': 'Run ID and Exam ID required'}, status=400)
+        
+        # Get all predictions for this specific exam and run
+        predictions = PredSeverity.objects.filter(run_id_id=run_id, exam_id_id=exam_id)
+        
+        # Get existing validations for this user, exam, and run
+        existing_validations = Validation.objects.filter(
+            pred_severity_id__run_id_id=run_id,
+            pred_severity_id__exam_id_id=exam_id,
+            user_id=request.user
+        )
+        
+        # Update validated_at timestamp for existing validations
+        from django.utils import timezone
+        validated_at = timezone.now()
+        updated_count = existing_validations.update(validated_at=validated_at)
+        
+        # For predictions without validations, create them as "correct" (unchanged)
+        existing_prediction_ids = set(existing_validations.values_list('pred_severity_id', flat=True))
+        new_validations = []
+        
+        for prediction in predictions:
+            if prediction.id not in existing_prediction_ids:
+                new_validations.append(Validation(
+                    pred_severity_id=prediction,
+                    user_id=request.user,
+                    severity_name=prediction.severity_name,
+                    is_correct=True,
+                    validated_at=validated_at
+                ))
+        
+        if new_validations:
+            Validation.objects.bulk_create(new_validations)
+            updated_count += len(new_validations)
+
+        return JsonResponse({
+            'message': f'Successfully submitted {updated_count} validations for this exam',
+            'count': updated_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 

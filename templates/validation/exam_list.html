@@ -17,22 +17,25 @@
     </div>
     
     <div class="flex gap-2">
+      {% if exams and filtered_run and exam_progress.total_percentage < 100.0 %}
+        <a href="{% url 'validation:exam_detail' exams.0.id %}?run={{ filtered_run.id }}" 
+           class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded transition">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Start Validation ({{ exams|length }} exams)
+        </a>
+      {% endif %}
+      
       {% if is_superuser %}
         <a href="{% url 'validation:admin_exam_create' %}" 
-           class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded transition">
+           class="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded transition">
           <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
           Create Exam
         </a>
-      {% endif %}
-      
-      {% if filtered_run %}
-        <a href="{% url 'validation:exam_list' %}" 
-           class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition">
-          Show All Exams
-        </a>
-      {% endif %}
+      {% endif %}      
       
       <a href="{% url 'validation:run_assignment_list' %}" 
          class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition">
@@ -47,53 +50,49 @@
       class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300"
     >
       <div class="p-6">
+        {% if filtered_run %}
+            <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">
+                Run ID: {{ filtered_run.id }}
+            </h2>
+        {% else %}
+            <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">
+                Exam ID: {{ exam.id }}
+            </h2>
+        {% endif %}
         <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">
-          Run ID: {{ exam.run_id }}
-        </h2>
-        <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">
-          Exam ID: {{ exam.external_id }}
+          External Exam ID: {{ exam.external_id }}
         </h2>
         <p class="text-gray-600 dark:text-gray-400 mb-2">
           Created: {{ exam.created_at|date:"F j, Y" }}
         </p>
         
-        {% for exam_id, assignment_info in exam_assignments.items %}
+        {% for exam_id, progress in exam_progress.items %}
           {% if exam_id == exam.id %}
             <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded transition-colors">
-              {% if is_superuser and assignment_info.all_users %}
+              {% if progress.status != 'no_predictions' %}
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Total Assignments:</strong> {{ assignment_info.total_assignments }}
+                  <strong>Validation Progress:</strong> {{ progress.validated_predictions }}/{{ progress.total_predictions }} predictions
                 </p>
-                <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Completed:</strong> {{ assignment_info.completed_assignments }}/{{ assignment_info.total_assignments }}
-                </p>
-                {% if assignment_info.assignments %}
-                  <div class="mt-2">
-                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Assigned users:</p>
-                    {% for assignment in assignment_info.assignments %}
-                      <span class="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded mr-1 mb-1">
-                        {{ assignment.user.email }}
-                        {% if assignment.is_completed %}✓{% else %}⏳{% endif %}
-                      </span>
-                    {% endfor %}
-                  </div>
+                
+                {% if progress.status == 'all_validated' %}
+                  <span class="inline-block mt-1 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
+                    ✓ All Validated
+                  </span>
+                {% elif progress.status == 'partially_validated' %}
+                  <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded">
+                    ⏳ Partially Validated ({{ progress.percentage_complete }}%)
+                  </span>
+                {% elif progress.status == 'pending' %}
+                  <span class="inline-block mt-1 px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs rounded">
+                    ⏳ Pending
+                  </span>
                 {% endif %}
               {% else %}
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Your Assignments:</strong> {{ assignment_info.total_assignments }}
+                  <strong>Status:</strong> No predictions available
                 </p>
-                <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Completed:</strong> {{ assignment_info.completed_assignments }}/{{ assignment_info.total_assignments }}
-                </p>
-              {% endif %}
-              
-              {% if assignment_info.completed_assignments == assignment_info.total_assignments and assignment_info.total_assignments > 0 %}
-                <span class="inline-block mt-1 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
-                  ✓ All Validated
-                </span>
-              {% else %}
-                <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded">
-                  ⏳ Pending
+                <span class="inline-block mt-1 px-2 py-1 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 text-xs rounded">
+                  📝 No Predictions
                 </span>
               {% endif %}
             </div>
@@ -102,7 +101,7 @@
         
         <div class="flex gap-2 mt-4">
           <a
-            href="{% url 'validation:exam_detail' exam.id %}"
+            href="{% url 'validation:exam_detail' exam.id %}?run={{ filtered_run.id }}"
             class="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
           >
             {% if is_superuser %}View Details{% else %}View & Validate{% endif %}
@@ -163,4 +162,4 @@
     {% endfor %}
   </div>
 </div>
-{% endblock %}
+{% endblock content %}

@@ -15,6 +15,8 @@ class Validation(models.Model):
         on_delete=models.CASCADE,
         related_name='validations'
     )
+    validated_at = models.DateTimeField(default=None, null=True, blank=True)
+
     is_correct = models.BooleanField(default=False)
     comment = models.TextField(blank=True, null=True)
     bounding_box = models.ForeignKey(

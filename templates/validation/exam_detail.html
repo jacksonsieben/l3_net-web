@@ -1,643 +1,953 @@
-{% extends "base.html" %} {% block title %}Exam {{ exam.external_id }} - L3Net
-Validation{% endblock %} {% block extra_head %}
-<style>
-  .bounding-box {
-    position: absolute;
-    border: 2px solid;
-    pointer-events: all;
-    cursor: pointer;
-    transition: opacity 0.2s ease-in-out;
-    z-index: 10;
-  }
-  .vertebra-box {
-    border-color: blue;
-    background-color: rgba(0, 0, 255, 0.1);
-  }
-  .severity-normal-mild {
-    border-color: green;
-    background-color: rgba(0, 255, 0, 0.1);
-  }
-  .severity-moderate {
-    border-color: orange;
-    background-color: rgba(255, 165, 0, 0.1);
-  }
-  .severity-severe {
-    border-color: red;
-    background-color: rgba(255, 0, 0, 0.1);
-  }
-  .vertebra-box {
-    border-color: blue;
-    background-color: rgba(0, 0, 255, 0.1);
-  }
-  .selected-box {
-    border-width: 3px;
-    opacity: 0.9 !important;
-  }
-  #image-container {
-    position: relative;
-    overflow: hidden;
-    height: 600px;
-    cursor: crosshair;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #d1d5db;
-  }
-  #annotation-image {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  .annotation-controls {
-    position: sticky;
-    bottom: 0;
-    background-color: rgba(255, 255, 255, 0.9);
-    border-top: 1px solid #e5e7eb;
-    padding: 1rem;
-    z-index: 10;
-  }
-  .dark .annotation-controls {
-    background-color: rgba(31, 41, 55, 0.9);
-    border-top: 1px solid #4b5563;
-  }
-  .prediction-item-selected {
-    background-color: #dbeafe !important; /* bg-blue-50 */
-  }
-  .dark .prediction-item-selected {
-    background-color: #1e3a8a !important; /* dark blue for dark mode */
-  }
-  .tooltip {
-    position: absolute;
-    padding: 0.5rem;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    z-index: 20;
-    pointer-events: none;
-    white-space: nowrap;
-  }
-</style>
-{% endblock %} {% block content %}
-<div class="container mx-auto px-4 py-6">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400">
-      Exam: {{ exam.external_id }}
-    </h1>
-    <div class="flex gap-2">
-      {% if user.is_superuser %}
-      <a
-        href="{% url 'validation:admin_exam_edit' exam.id %}"
-        class="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded transition"
-      >
-        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-        </svg>
-        Edit Exam
-      </a>
-      <a
-        href="{% url 'validation:admin_exam_delete' exam.id %}"
-        class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded transition"
-      >
-        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"></path>
-        </svg>
-        Delete Exam
-      </a>
-      {% endif %}
-      <a
-        href="{% url 'validation:run_assignment_list' %}"
-        class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded transition"
-      >
-        Back to Assignments
-      </a>
-    </div>
-  </div>
+{% extends "base.html" %}
+{% block title %}
+    Exam {{ exam.external_id }} - L3Net
+    Validation
+{% endblock title %}
+{% block extra_head %}
+    <style>
+        .bounding-box {
+            position: absolute;
+            border: 2px solid;
+            pointer-events: all;
+            cursor: pointer;
+            transition: opacity 0.2s ease-in-out;
+            z-index: 10;
+        }
 
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-colors">
-    <div class="flex flex-col lg:flex-row">
-      <!-- Left Panel: Image Display with Annotations -->
-      <div class="w-full lg:w-3/4 lg:pr-6">
-        <div id="image-container" class="border border-gray-300 dark:border-gray-600 rounded transition-colors">
-          {% if exam.image_path and run %}
-          <img
-            id="annotation-image"
-            src="{% url 'validation:exam_image' exam.id run.id %}"
-            alt="Medical Image"
-          />
-          
-        {% else %}
-          <div
-            class="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
-          >
-            <p>No image available</p>
-          </div>
-          {% endif %}
-          <div id="boxes-container"></div>
-        </div>
+        .vertebra-box {
+            border-color: blue;
+            background-color: rgba(0, 0, 255, 0.1);
+        }
 
-        <div class="annotation-controls flex flex-wrap gap-3">
-          <div>
-            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Zoom:</label>
-            <button
-              id="zoom-in"
-              class="bg-blue-500 dark:bg-blue-900 text-white px-3 py-1 rounded"
-            >
-              +
-            </button>
-            <button
-              id="zoom-reset"
-              class="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1 rounded transition-colors"
-            >
-              Reset
-            </button>
-            <button
-              id="zoom-out"
-              class="bg-blue-500 dark:bg-blue-900 text-white px-3 py-1 rounded"
-            >
-              -
-            </button>
-          </div>
+        .severity-normal-mild {
+            border-color: green;
+            background-color: rgba(0, 255, 0, 0.1);
+        }
 
-          <div>
-            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Show:</label>
-            <label class="inline-flex items-center">
-              <input
-                type="checkbox"
-                id="show-vertebrae"
-                class="form-checkbox"
-                checked
-              />
-              <span class="ml-1 text-gray-700 dark:text-gray-300">Vertebrae</span>
-            </label>
-          </div>
+        .severity-moderate {
+            border-color: orange;
+            background-color: rgba(255, 165, 0, 0.1);
+        }
 
-          <div>
-            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Opacity:</label>
-            <input
-              type="range"
-              id="box-opacity"
-              min="0"
-              max="1"
-              step="0.1"
-              value="0.5"
-              class="w-32"
-            />
-          </div>
-        </div>
-      </div>
+        .severity-severe {
+            border-color: red;
+            background-color: rgba(255, 0, 0, 0.1);
+        }
 
-      <!-- Right Panel: Prediction Details -->
-      <div class="w-full lg:w-1/4 mt-6 lg:mt-0">
-        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg transition-colors">
-          <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Prediction Details</h3>
+        .vertebra-box {
+            border-color: blue;
+            background-color: rgba(0, 0, 255, 0.1);
+        }
 
-          {% if run %}
-          <div class="mb-4">
-            <p class="text-gray-700 dark:text-gray-300">
-              <span class="font-medium">Run Date:</span> {{ run.run_date|date:"F j, Y H:i" }}
-            </p>
-          </div>
-          
-          {% if validation_progress %}
-          <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg transition-colors">
-            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Validation Progress</h4>
-            <div class="flex items-center mb-2">
-              <div class="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full" style="width: {{ validation_progress.percentage_complete }}%"></div>
-              </div>
-              <span class="ml-2 text-sm font-medium text-blue-800 dark:text-blue-200">{{ validation_progress.percentage_complete }}%</span>
+        .selected-box {
+            border-width: 3px;
+            opacity: 0.9 !important;
+        }
+
+        #image-container {
+            position: relative;
+            overflow: hidden;
+            height: 600px;
+            cursor: crosshair;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #d1d5db;
+        }
+
+        #annotation-image {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .annotation-controls {
+            position: sticky;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-top: 1px solid #e5e7eb;
+            padding: 1rem;
+            z-index: 10;
+        }
+
+        .dark .annotation-controls {
+            background-color: rgba(31, 41, 55, 0.9);
+            border-top: 1px solid #4b5563;
+        }
+
+        .prediction-item-selected {
+            background-color: #dbeafe !important;
+            /* bg-blue-50 */
+        }
+
+        .dark .prediction-item-selected {
+            background-color: #1e3a8a !important;
+            /* dark blue for dark mode */
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 0.5rem;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            z-index: 20;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+{% endblock extra_head %}
+{% block content %}
+    {% csrf_token %}
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+                <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400">Exam: {{ exam.external_id }}</h1>
+                
+                <!-- Navigation Info -->
+                {% if exam_position %}
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                    ({{ exam_position.current }} of {{ exam_position.total }} in this run)
+                    <div class="text-xs text-gray-500 dark:text-gray-500">
+                        Use ← → arrow keys to navigate
+                    </div>
+                </div>
+                {% endif %}
             </div>
-            <p class="text-xs text-blue-700 dark:text-blue-300">
-              {{ validation_progress.validated_predictions }}/{{ validation_progress.total_predictions }} predictions validated
-            </p>
-            {% if validation_progress.is_complete %}
-              <span class="inline-block mt-1 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
-                ✓ Complete
-              </span>
-            {% else %}
-              <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded">
-                {{ validation_progress.remaining_predictions }} remaining
-              </span>
-            {% endif %}
-          </div>
-          {% endif %}
-
-          <div class="mb-4">
-            <h4 class="text-lg font-medium mb-2 text-gray-800 dark:text-gray-200">Predictions</h4>
-            <ul class="space-y-2" id="prediction-list">
-              {% for prediction in severity_predictions %}
-              <li
-                class="text-sm p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer prediction-item text-gray-700 dark:text-gray-300 transition-colors"
-                data-index="{{ forloop.counter0 }}"
-                data-vertebra="{{ prediction.vertebrae_level }}"
-                data-severity="{{ prediction.severity_name }}"
-                data-confidence="{{ prediction.confidence|floatformat:2 }}"
-                data-x1="{{ prediction.bounding_box.x1 }}"
-                data-y1="{{ prediction.bounding_box.y1 }}"
-                data-x2="{{ prediction.bounding_box.x2 }}"
-                data-y2="{{ prediction.bounding_box.y2 }}"
-              >
-                <div>
-                  <span class="font-medium">ID:</span> 
-                  {{ prediction.id }}
-                </div>
-                <div>
-                  <span class="font-medium">Level:</span> 
-                  {{ prediction.vertebrae_level }}
-                </div>
-                <div>
-                  <span class="font-medium">Severity:</span> 
-                  {{ prediction.severity_name }}
-                </div>
-                <div>
-                  <span class="font-medium">Confidence:</span> 
-                  {{ prediction.confidence|floatformat:2 }}%
-                </div>
-              </li>
-              {% endfor %}
-            </ul>
-          </div>
-
-          
-          {% else %}
-          <p class="text-gray-600 dark:text-gray-400">
-            No prediction data available for this exam.
-          </p>
-          {% endif %}
+            
+            <div class="flex gap-2">
+                <!-- Navigation Buttons -->
+                {% if previous_exam %}
+                <a href="{% url 'validation:exam_detail' previous_exam.id %}?run={{ run.id }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition"
+                   title="Previous Exam: {{ previous_exam.external_id }}">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Previous
+                </a>
+                {% endif %}
+                
+                {% if next_exam %}
+                <a href="{% url 'validation:exam_detail' next_exam.id %}?run={{ run.id }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition"
+                   title="Next Exam: {{ next_exam.external_id }}">
+                    Next
+                    <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+                {% endif %}
+                {% if user.is_superuser %}
+                    <a href="{% url 'validation:admin_exam_edit' exam.id %}"
+                       class="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded transition">
+                        <svg class="w-4 h-4 inline mr-1"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                            </path>
+                        </svg>
+                        Edit Exam
+                    </a>
+                    <a href="{% url 'validation:admin_exam_delete' exam.id %}"
+                       class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded transition">
+                        <svg class="w-4 h-4 inline mr-1"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16">
+                            </path>
+                        </svg>
+                        Delete Exam
+                    </a>
+                {% endif %}
+                <a href="{% url 'validation:run_assignment_list' %}"
+                   class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded transition">
+                    Back to Assignments
+                </a>
+            </div>
         </div>
-      </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-colors">
+            <div class="flex flex-col lg:flex-row">
+                <!-- Left Panel: Image Display with Annotations -->
+                <div class="w-full lg:w-3/4 lg:pr-6">
+                    <div id="image-container"
+                         class="border border-gray-300 dark:border-gray-600 rounded transition-colors">
+                        {% if exam.image_path and run %}
+                            <img id="annotation-image"
+                                 src="{% url 'validation:exam_image' exam.id run.id %}"
+                                 alt="Medical Image"
+                                 width="100%"
+                                 height="auto" />
+                        {% else %}
+                            <div class="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors">
+                                <p>No image available</p>
+                            </div>
+                        {% endif %}
+                        <div id="boxes-container"></div>
+                    </div>
+                    <div class="annotation-controls flex flex-wrap gap-3">
+                        <div>
+                            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Zoom:</label>
+                            <button id="zoom-in"
+                                    class="bg-blue-500 dark:bg-blue-900 text-white px-3 py-1 rounded">+</button>
+                            <button id="zoom-reset"
+                                    class="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1 rounded transition-colors">
+                                Reset
+                            </button>
+                            <button id="zoom-out"
+                                    class="bg-blue-500 dark:bg-blue-900 text-white px-3 py-1 rounded">-</button>
+                        </div>
+                        <div>
+                            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Show:</label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" id="show-vertebrae" class="form-checkbox" />
+                                <span class="ml-1 text-gray-700 dark:text-gray-300">Vertebrae</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="mr-2 font-medium text-gray-700 dark:text-gray-300">Opacity:</label>
+                            <input type="range"
+                                   id="box-opacity"
+                                   min="0"
+                                   max="1"
+                                   step="0.1"
+                                   value="0.5"
+                                   class="w-32" />
+                        </div>
+                    </div>
+                </div>
+                <!-- Right Panel: Prediction Details -->
+                <div class="w-full lg:w-1/4 mt-6 lg:mt-0">
+                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg transition-colors">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Prediction Details</h3>
+                        {% if run %}
+                            <div class="mb-4">
+                                <p class="text-gray-700 dark:text-gray-300">
+                                    <span class="font-medium">Run Date:</span> {{ run.run_date|date:"F j, Y H:i" }}
+                                </p>
+                            </div>
+                            {% if validation_progress %}
+                                <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg transition-colors">
+                                    <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Validation Progress</h4>
+                                    <div class="flex items-center mb-2">
+                                        <div class="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                            <div class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full"
+                                                 style="width: {{ validation_progress.percentage_complete }}%"></div>
+                                        </div>
+                                        <span class="ml-2 text-sm font-medium text-blue-800 dark:text-blue-200">{{ validation_progress.percentage_complete }}%</span>
+                                    </div>
+                                    <p class="text-xs text-blue-700 dark:text-blue-300">
+                                        {{ validation_progress.validated_predictions }}/{{ validation_progress.total_predictions }} predictions validated
+                                    </p>
+                                    {% if validation_progress.is_complete %}
+                                        <span class="inline-block mt-1 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
+                                            ✓ Complete
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-block mt-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded">
+                                            {{ validation_progress.remaining_predictions }} remaining
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                <div class="mb-4">
+                <h4 class="text-lg font-medium mb-2 text-gray-800 dark:text-gray-200">Predictions</h4>
+                {% if no_predictions %}
+                    <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg text-center">
+                        <div class="text-gray-500 dark:text-gray-400 mb-2">
+                            <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                            </svg>
+                        </div>
+                        <h5 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">No Predictions Available</h5>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            This exam doesn't have any prediction data for the current run.
+                        </p>
+                    </div>
+                {% else %}
+                    <ul class="space-y-2" id="prediction-list">
+                        {% for prediction in severity_predictions %}
+                                        <li class="text-sm p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer prediction-item text-gray-700 dark:text-gray-300 transition-colors {% if prediction.validation.validated_at %}bg-green-100 dark:bg-green-900{% elif prediction.validation.is_modified %}bg-yellow-100 dark:bg-yellow-900{% endif %}"
+                                            data-index="{{ forloop.counter0 }}"
+                                            data-vertebra="{{ prediction.vertebrae_level }}"
+                                            data-severity="{{ prediction.severity_name }}"
+                                            data-validation-severity="{% if prediction.validation.severity_name %}{{ prediction.validation.severity_name }}{% else %}{{ prediction.severity_name }}{% endif %}"
+                                            data-confidence="{{ prediction.confidence|floatformat:2 }}"
+                                            data-prediction-id="{{ prediction.id }}"
+                                            data-validation-id="{% if prediction.validation.id %}{{ prediction.validation.id }}{% endif %}"
+                                            data-is-modified="{{ prediction.validation.is_modified|yesno:'true,false' }}"
+                                            data-is-validated="{% if prediction.validation.validated_at %}true{% else %}false{% endif %}"
+                                            data-x1="{{ prediction.bounding_box.x1 }}"
+                                            data-y1="{{ prediction.bounding_box.y1 }}"
+                                            data-x2="{{ prediction.bounding_box.x2 }}"
+                                            data-y2="{{ prediction.bounding_box.y2 }}">
+                                            <div>
+                                                <span class="font-medium">ID:</span>
+                                                {{ prediction.id }}
+                                            </div>
+                                            <div>
+                                                <span class="font-medium">Level:</span>
+                                                {{ prediction.vertebrae_level }}
+                                            </div>
+                                            <div class="severity-display">
+                                                <span class="font-medium">Severity:</span>
+                                                <span class="severity-text">{% if prediction.validation.severity_name %}{{ prediction.validation.severity_name }}{% else %}{{ prediction.severity_name }}{% endif %}</span>
+                                                
+                                                {% if prediction.validation.validated_at %}
+                                                    <div class="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                        ✓ Validated
+                                                        {% if prediction.validation.is_modified %}
+                                                            <br>
+                                                            <span class="font-medium">Original:</span> 
+                                                            <span class="original-severity">{{ prediction.severity_name }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% elif prediction.validation.is_modified %}
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 modified-info">
+                                                        <span class="text-yellow-600 dark:text-yellow-400">(Modified)</span>
+                                                        <br>
+                                                        <span class="font-medium">Original:</span> 
+                                                        <span class="original-severity">{{ prediction.severity_name }}</span>
+                                                    </div>
+                                                {% endif %}
+                                                <div class="severity-controls hidden mt-2">
+                                                    <select class="severity-dropdown text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full">
+                                                        <option value="Normal/Mild"
+                                                                {% if prediction.validation.severity_name == 'Normal/Mild' %}selected{% endif %}>Normal/Mild</option>
+                                                        <option value="Moderate"
+                                                                {% if prediction.validation.severity_name == 'Moderate' %}selected{% endif %}>Moderate</option>
+                                                        <option value="Severe"
+                                                                {% if prediction.validation.severity_name == 'Severe' %}selected{% endif %}>Severe</option>
+                                                        <option value="Nothing"
+                                                                {% if prediction.validation.severity_name == 'Nothing' %}selected{% endif %}>Nothing</option>
+                                                        <option value="Unkown"
+                                                                {% if prediction.validation.severity_name == 'Unkown' %}selected{% endif %}>Unknown</option>
+                                                    </select>
+                                                    <div class="mt-1 flex gap-1">
+                                                        <button class="update-severity-btn bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition">
+                                                            Update
+                                                        </button>
+                                                        <button class="cancel-severity-btn bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded transition">
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium">Confidence:</span>
+                                                {{ prediction.confidence|floatformat:2 }}%
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <!-- Submit All Validations Button -->
+                                <div class="mt-4">
+                                    <button id="submit-all-validations" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition"
+                                            data-run-id="{{ run.id }}">
+                                        Submit All Validations
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-gray-600 dark:text-gray-400">No run data available for this exam.</p>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
-{% endblock %} {% block extra_js %}
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-      const imageContainer = document.getElementById('image-container');
-      const annotationImage = document.getElementById('annotation-image');
-      const boxesContainer = document.getElementById('boxes-container');
-      const zoomIn = document.getElementById('zoom-in');
-      const zoomOut = document.getElementById('zoom-out');
-      const zoomReset = document.getElementById('zoom-reset');
-      const boxOpacity = document.getElementById('box-opacity');
-      const showVertebraeCheckbox = document.getElementById('show-vertebrae');
-      const predictionList = document.getElementById('prediction-list');
-      const selectionDetails = document.getElementById('selection-details');
-      const selectedVertebra = document.getElementById('selected-vertebra');
-      const selectedSeverity = document.getElementById('selected-severity');
-      const selectedConfidence = document.getElementById('selected-confidence');
+{% endblock content %}
+{% block extra_js %}
+    <script>
+        var validations = [];
+        document.addEventListener('DOMContentLoaded', function() {
+                    const imageContainer = document.getElementById('image-container');
+                    const annotationImage = document.getElementById('annotation-image');
+                    const boxesContainer = document.getElementById('boxes-container');
+                    const zoomIn = document.getElementById('zoom-in');
+                    const zoomOut = document.getElementById('zoom-out');
+                    const zoomReset = document.getElementById('zoom-reset');
+                    const boxOpacity = document.getElementById('box-opacity');
+                    const showVertebraeCheckbox = document.getElementById('show-vertebrae');
+                    const predictionList = document.getElementById('prediction-list');
+                    const updateSeverityBtn = document.getElementById('update-severity-btn');
 
-      let scale = 1;
-      const maxScale = 3;
-      const minScale = 0.5;
-      const scaleStep = 0.1;
-      let selectedPredictionIndex = -1; // Track which severity prediction is selected
+                    let scale = 1;
+                    const maxScale = 3;
+                    const minScale = 0.5;
+                    const scaleStep = 0.1;
+                    let selectedPredictionIndex = -1; // Track which severity prediction is selected
 
-      // Set image container to position relative for proper box positioning
-      if (imageContainer) {
-          imageContainer.style.position = 'relative';
-      }
+                    // Set image container to position relative for proper box positioning
+                    if (imageContainer) {
+                        imageContainer.style.position = 'relative';
+                    }
 
-      // Load predictions from the template context
-      const severityPredictions = [
-          {% for prediction in severity_predictions %}
-          {
-              type: 'severity',
-              vertebra_name: "{{ prediction.vertebrae_level }}",
-              severity_name: "{{ prediction.severity_name }}",
-              confidence: {{ prediction.confidence }},
-              bounding_box: {
-                  x1: {{ prediction.bounding_box.x1 }},
-                  y1: {{ prediction.bounding_box.y1 }},
-                  x2: {{ prediction.bounding_box.x2 }},
-                  y2: {{ prediction.bounding_box.y2 }},
-              }
-          },
-          {% endfor %}
-      ];
+                    // Load predictions and existing validations from the template context
+                    const severityPredictions = [{% for prediction in severity_predictions %}
+                    {
+                        id: {{ prediction.id }},
+                        type: 'severity',
+                        vertebra_name: "{{ prediction.vertebrae_level }}",
+                        severity_name: "{{ prediction.severity_name }}",
+                        confidence: {{ prediction.confidence }},
+                        bounding_box: {
+                            x1: {{ prediction.bounding_box.x1 }},
+                            y1: {{ prediction.bounding_box.y1 }},
+                            x2: {{ prediction.bounding_box.x2 }},
+                            y2: {{ prediction.bounding_box.y2 }}
+                        },
+                        validation: {
+                            id: {% if prediction.validation.id %}{{ prediction.validation.id }}{% else %}null{% endif %},
+                            severity_name: "{{ prediction.validation.severity_name }}",
+                            is_correct: {{ prediction.validation.is_correct|yesno:'true,false' }},
+                            is_modified: {{ prediction.validation.is_modified|yesno:'true,false' }},
+                            exists: {{ prediction.validation.exists|yesno:'true,false' }}
+                        }
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}];
 
-      const vertebraePredictions = [
-          {% for prediction in vertebrae_predictions %}
-          {
-              type: 'vertebra',
-              vertebra_name: "{{ prediction.vertebra_name }}",
-              confidence: {{ prediction.confidence }},
-              polygon: {
-                  x1: {{ prediction.polygon.x1 }},
-                  y1: {{ prediction.polygon.y1 }},
-                  x2: {{ prediction.polygon.x2 }},
-                  y2: {{ prediction.polygon.y2 }},
-              }
-          },
-          {% endfor %}
-      ];
+                    const vertebraePredictions = [{% for prediction in vertebrae_predictions %}
+                    {
+                        type: 'vertebra',
+                        vertebra_name: "{{ prediction.vertebra_name }}",
+                        confidence: {{ prediction.confidence }},
+                        polygon: {
+                            x1: {{ prediction.polygon.x1 }},
+                            y1: {{ prediction.polygon.y1 }},
+                            x2: {{ prediction.polygon.x2 }},
+                            y2: {{ prediction.polygon.y2 }}
+                        }
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}];
 
-      // Initialize image properly
-      if (annotationImage) {
-          // Reset any transform that might be applied
-          annotationImage.style.transform = 'none';
-          
-          // Draw bounding boxes once the image is loaded
-          annotationImage.onload = function() {
-              fitImageToContainer();
-              renderBoxes();
-          };
+                    // Initialize existing validations on page load
+                    function initializeExistingValidations() {
+                        severityPredictions.forEach((prediction, index) => {
+                            if (prediction.validation.exists && prediction.validation.is_modified) {
+                                const predictionItem = document.querySelector(`[data-index="${index}"]`);
+                                if (predictionItem) {
+                                    // Add modified styling
+                                    predictionItem.classList.add('bg-yellow-100', 'dark:bg-yellow-900');
+                                    
+                                    // Add modified indicator if it doesn't exist
+                                    const severityDisplay = predictionItem.querySelector('.severity-display');
+                                    if (severityDisplay && !predictionItem.querySelector('.modified-indicator')) {
+                                        const modifiedIndicator = document.createElement('div');
+                                        modifiedIndicator.className = 'text-xs text-gray-500 dark:text-gray-400 mt-1 modified-indicator';
+                                        modifiedIndicator.innerHTML = `
+                                            <span class="text-yellow-600 dark:text-yellow-400">(Modified)</span>
+                                            <br>
+                                            <span class="font-medium">Original:</span> 
+                                            <span class="original-severity">${prediction.severity_name}</span>
+                                        `;
+                                        severityDisplay.appendChild(modifiedIndicator);
+                                    }
+                                }
+                            }
+                        });
+                    }
 
-          // If image is already loaded (from cache), initialize immediately
-          if (annotationImage.complete) {
-              fitImageToContainer();
-              renderBoxes();
-          }
-      }
-      
-      // Function to ensure image fits inside the container
-      function fitImageToContainer() {
-          if (!annotationImage) return;
-          
-          // Reset to default CSS sizing (max-width: 100%, max-height: 100%)
-          annotationImage.style.transform = 'none';
-          scale = 1;
-          
-          // Re-render boxes after a short delay to allow CSS to apply, maintaining selected severity prediction
-          setTimeout(() => renderBoxes(selectedPredictionIndex), 50);
-      }
+                    function fitImageToContainer() {
+                        if (!annotationImage) return;
 
-      function renderBoxes(selectedSeverityIndex = -1) {
-          // Clear existing boxes
-          boxesContainer.innerHTML = '';
+                        // Reset to default CSS sizing (max-width: 100%, max-height: 100%)
+                        annotationImage.style.transform = 'none';
+                        scale = 1;
 
-          if (!annotationImage || !annotationImage.naturalWidth || !annotationImage.naturalHeight) {
-              return; // Image not loaded yet
-          }
+                        // Re-render boxes after a short delay to allow CSS to apply, maintaining selected severity prediction
+                        setTimeout(() => renderBoxes(selectedPredictionIndex), 50);
+                    }
 
-          // Get the image's bounding rectangle
-          const imageRect = annotationImage.getBoundingClientRect();
-          const containerRect = imageContainer.getBoundingClientRect();
-          
-          // Calculate the actual displayed size of the image (considering CSS scaling and transform)
-          const currentImageWidth = imageRect.width;
-          const currentImageHeight = imageRect.height;
-          
-          // Get the position of the image relative to the container
-          const imageLeft = imageRect.left - containerRect.left;
-          const imageTop = imageRect.top - containerRect.top;
+                    function renderBoxes(selectedSeverityIndex = -1) {
+                        // Clear existing boxes
+                        boxesContainer.innerHTML = '';
 
-          // Render selected severity prediction if one is selected
-          if (selectedSeverityIndex >= 0 && selectedSeverityIndex < severityPredictions.length) {
-              const prediction = severityPredictions[selectedSeverityIndex];
-              
-              // Create box element
-              const box = document.createElement('div');
-              box.className = 'bounding-box';
+                        if (!annotationImage || !annotationImage.naturalWidth || !annotationImage.naturalHeight) {
+                            return; // Image not loaded yet
+                        }
 
-              // Determine class based on severity
-              const severityClass = prediction.severity_name.toLowerCase().replace('/', '-').replace(' ', '-');
-              box.classList.add(`severity-${severityClass}`);
+                        // Get the image's bounding rectangle
+                        const imageRect = annotationImage.getBoundingClientRect();
+                        const containerRect = imageContainer.getBoundingClientRect();
 
-              // Calculate bounding box position and size
-              let boxLeft, boxTop, boxWidth, boxHeight;
-              
-              if (prediction.bounding_box.x1 <= 1 && prediction.bounding_box.x2 <= 1 && 
-                  prediction.bounding_box.y1 <= 1 && prediction.bounding_box.y2 <= 1) {
-                  // Coordinates are normalized (0-1)
-                  boxLeft = prediction.bounding_box.x1 * currentImageWidth;
-                  boxTop = prediction.bounding_box.y1 * currentImageHeight;
-                  boxWidth = (prediction.bounding_box.x2 - prediction.bounding_box.x1) * currentImageWidth;
-                  boxHeight = (prediction.bounding_box.y2 - prediction.bounding_box.y1) * currentImageHeight;
-              } else {
-                  // Coordinates are in pixels, scale them to current image size
-                  const scaleX = currentImageWidth / annotationImage.naturalWidth;
-                  const scaleY = currentImageHeight / annotationImage.naturalHeight;
-                  boxLeft = prediction.bounding_box.x1 * scaleX;
-                  boxTop = prediction.bounding_box.y1 * scaleY;
-                  boxWidth = (prediction.bounding_box.x2 - prediction.bounding_box.x1) * scaleX;
-                  boxHeight = (prediction.bounding_box.y2 - prediction.bounding_box.y1) * scaleY;
-              }
+                        // Calculate the actual displayed size of the image (considering CSS scaling and transform)
+                        const currentImageWidth = imageRect.width;
+                        const currentImageHeight = imageRect.height;
 
-              // Position the box relative to the container
-              box.style.left = `${imageLeft + boxLeft}px`;
-              box.style.top = `${imageTop + boxTop}px`;
-              box.style.width = `${boxWidth}px`;
-              box.style.height = `${boxHeight}px`;
-              box.style.opacity = boxOpacity.value;
+                        // Get the position of the image relative to the container
+                        const imageLeft = imageRect.left - containerRect.left;
+                        const imageTop = imageRect.top - containerRect.top;
 
-              // Store prediction data
-              box.dataset.index = selectedSeverityIndex;
-              box.dataset.type = 'severity';
-              box.dataset.vertebra = prediction.vertebra_name;
-              box.dataset.severity = prediction.severity_name;
-              box.dataset.confidence = prediction.confidence.toFixed(2);
+                        // Render selected severity prediction if one is selected
+                        if (selectedSeverityIndex >= 0 && selectedSeverityIndex < severityPredictions.length) {
+                            const prediction = severityPredictions[selectedSeverityIndex];
 
-              // Add event listeners
-              box.addEventListener('click', handleBoxClick);
-              box.addEventListener('mouseover', handleBoxHover);
-              box.addEventListener('mouseout', handleBoxHoverEnd);
+                            // Create box element
+                            const box = document.createElement('div');
+                            box.className = 'bounding-box';
 
-              // Add to container
-              boxesContainer.appendChild(box);
-          }
+                            // Determine class based on severity
+                            const severityClass = prediction.severity_name.toLowerCase().replace('/', '-').replace(' ', '-');
+                            box.classList.add(`severity-${severityClass}`);
 
-          // Render vertebrae predictions if enabled by checkbox
-          if (showVertebraeCheckbox.checked) {
-              vertebraePredictions.forEach((prediction, index) => {
-                  // Create box element
-                  const box = document.createElement('div');
-                  box.className = 'bounding-box vertebra-box';
+                            // Calculate bounding box position and size
+                            let boxLeft, boxTop, boxWidth, boxHeight;
 
-                  // Calculate bounding box position and size
-                  let boxLeft, boxTop, boxWidth, boxHeight;
-                  
-                  if (prediction.polygon.x1 <= 1 && prediction.polygon.x2 <= 1 && 
-                      prediction.polygon.y1 <= 1 && prediction.polygon.y2 <= 1) {
-                      // Coordinates are normalized (0-1)
-                      boxLeft = prediction.polygon.x1 * currentImageWidth;
-                      boxTop = prediction.polygon.y1 * currentImageHeight;
-                      boxWidth = (prediction.polygon.x2 - prediction.polygon.x1) * currentImageWidth;
-                      boxHeight = (prediction.polygon.y2 - prediction.polygon.y1) * currentImageHeight;
-                  } else {
-                      // Coordinates are in pixels, scale them to current image size
-                      const scaleX = currentImageWidth / annotationImage.naturalWidth;
-                      const scaleY = currentImageHeight / annotationImage.naturalHeight;
-                      boxLeft = prediction.polygon.x1 * scaleX;
-                      boxTop = prediction.polygon.y1 * scaleY;
-                      boxWidth = (prediction.polygon.x2 - prediction.polygon.x1) * scaleX;
-                      boxHeight = (prediction.polygon.y2 - prediction.polygon.y1) * scaleY;
-                  }
+                            if (prediction.bounding_box.x1 <= 1 && prediction.bounding_box.x2 <= 1 &&
+                                prediction.bounding_box.y1 <= 1 && prediction.bounding_box.y2 <= 1) {
+                                // Coordinates are normalized (0-1)
+                                boxLeft = prediction.bounding_box.x1 * currentImageWidth;
+                                boxTop = prediction.bounding_box.y1 * currentImageHeight;
+                                boxWidth = (prediction.bounding_box.x2 - prediction.bounding_box.x1) * currentImageWidth;
+                                boxHeight = (prediction.bounding_box.y2 - prediction.bounding_box.y1) * currentImageHeight;
+                            } else {
+                                // Coordinates are in pixels, scale them to current image size
+                                const scaleX = currentImageWidth / annotationImage.naturalWidth;
+                                const scaleY = currentImageHeight / annotationImage.naturalHeight;
+                                boxLeft = prediction.bounding_box.x1 * scaleX;
+                                boxTop = prediction.bounding_box.y1 * scaleY;
+                                boxWidth = (prediction.bounding_box.x2 - prediction.bounding_box.x1) * scaleX;
+                                boxHeight = (prediction.bounding_box.y2 - prediction.bounding_box.y1) * scaleY;
+                            }
 
-                  // Position the box relative to the container
-                  box.style.left = `${imageLeft + boxLeft}px`;
-                  box.style.top = `${imageTop + boxTop}px`;
-                  box.style.width = `${boxWidth}px`;
-                  box.style.height = `${boxHeight}px`;
-                  box.style.opacity = boxOpacity.value;
+                            // Position the box relative to the container
+                            box.style.left = `${imageLeft + boxLeft}px`;
+                            box.style.top = `${imageTop + boxTop}px`;
+                            box.style.width = `${boxWidth}px`;
+                            box.style.height = `${boxHeight}px`;
+                            box.style.opacity = boxOpacity.value;
 
-                  // Store prediction data
-                  box.dataset.index = index;
-                  box.dataset.type = 'vertebra';
-                  box.dataset.vertebra = prediction.vertebra_name;
-                  box.dataset.severity = '';
-                  box.dataset.confidence = prediction.confidence.toFixed(2);
+                            // Store prediction data
+                            box.dataset.index = selectedSeverityIndex;
+                            box.dataset.type = 'severity';
+                            box.dataset.vertebra = prediction.vertebra_name;
+                            box.dataset.severity = prediction.severity_name;
+                            box.dataset.confidence = prediction.confidence.toFixed(2);
+                            box.dataset.predictionId = prediction.id;
 
-                  // Add event listeners
-                  box.addEventListener('click', handleBoxClick);
-                  box.addEventListener('mouseover', handleBoxHover);
-                  box.addEventListener('mouseout', handleBoxHoverEnd);
+                            // Add event listeners
+                            box.addEventListener('click', handleBoxClick);
+                            box.addEventListener('mouseover', handleBoxHover);
+                            box.addEventListener('mouseout', handleBoxHoverEnd);
 
-                  // Add to container
-                  boxesContainer.appendChild(box);
-              });
-          }
-      }
+                            // Add to container
+                            boxesContainer.appendChild(box);
+                        }
 
-      function handleBoxClick(e) {
-          e.stopPropagation();
+                        // Render vertebrae predictions if enabled by checkbox
+                        if (showVertebraeCheckbox.checked) {
+                            vertebraePredictions.forEach((prediction, index) => {
+                                // Create box element
+                                const box = document.createElement('div');
+                                box.className = 'bounding-box vertebra-box';
 
-          // Remove selected class from all boxes
-          document.querySelectorAll('.bounding-box').forEach(box => {
-              box.classList.remove('selected-box');
-          });
+                                // Calculate bounding box position and size
+                                let boxLeft, boxTop, boxWidth, boxHeight;
 
-          // Add selected class to this box
-          e.target.classList.add('selected-box');
+                                if (prediction.polygon.x1 <= 1 && prediction.polygon.x2 <= 1 &&
+                                    prediction.polygon.y1 <= 1 && prediction.polygon.y2 <= 1) {
+                                    // Coordinates are normalized (0-1)
+                                    boxLeft = prediction.polygon.x1 * currentImageWidth;
+                                    boxTop = prediction.polygon.y1 * currentImageHeight;
+                                    boxWidth = (prediction.polygon.x2 - prediction.polygon.x1) * currentImageWidth;
+                                    boxHeight = (prediction.polygon.y2 - prediction.polygon.y1) * currentImageHeight;
+                                } else {
+                                    // Coordinates are in pixels, scale them to current image size
+                                    const scaleX = currentImageWidth / annotationImage.naturalWidth;
+                                    const scaleY = currentImageHeight / annotationImage.naturalHeight;
+                                    boxLeft = prediction.polygon.x1 * scaleX;
+                                    boxTop = prediction.polygon.y1 * scaleY;
+                                    boxWidth = (prediction.polygon.x2 - prediction.polygon.x1) * scaleX;
+                                    boxHeight = (prediction.polygon.y2 - prediction.polygon.y1) * scaleY;
+                                }
 
-          // Update selection details panel if elements exist
-          if (selectionDetails && selectedVertebra && selectedSeverity && selectedConfidence) {
-              selectedVertebra.textContent = e.target.dataset.vertebra || '';
-              selectedSeverity.textContent = e.target.dataset.severity || '';
-              selectedConfidence.textContent = e.target.dataset.confidence || '';
-              selectionDetails.classList.remove('hidden');
-          }
+                                // Position the box relative to the container
+                                box.style.left = `${imageLeft + boxLeft}px`;
+                                box.style.top = `${imageTop + boxTop}px`;
+                                box.style.width = `${boxWidth}px`;
+                                box.style.height = `${boxHeight}px`;
+                                box.style.opacity = boxOpacity.value;
 
-          // Highlight corresponding item in prediction list
-          document.querySelectorAll('.prediction-item').forEach(item => {
-              item.classList.remove('prediction-item-selected');
-              if (item.dataset.vertebra === e.target.dataset.vertebra &&
-                  item.dataset.severity === e.target.dataset.severity) {
-                  item.classList.add('prediction-item-selected');
-                  item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }
-          });
-      }
+                                // Store prediction data
+                                box.dataset.index = index;
+                                box.dataset.type = 'vertebra';
+                                box.dataset.vertebra = prediction.vertebra_name;
+                                box.dataset.severity = '';
+                                box.dataset.confidence = prediction.confidence.toFixed(2);
 
-      // Tooltip functionality
-      function handleBoxHover(e) {
-          const box = e.target;
+                                // Add event listeners
+                                box.addEventListener('click', handleBoxClick);
+                                box.addEventListener('mouseover', handleBoxHover);
+                                box.addEventListener('mouseout', handleBoxHoverEnd);
 
-          // Create tooltip
-          const tooltip = document.createElement('div');
-          tooltip.className = 'tooltip';
-          if (box.dataset.type === 'vertebra') {
-              tooltip.innerHTML = `
+                                // Add to container
+                                boxesContainer.appendChild(box);
+                            });
+                        }
+                    }
+
+                    function handleBoxClick(e) {
+                        e.stopPropagation();
+
+                        // Remove selected class from all boxes
+                        document.querySelectorAll('.bounding-box').forEach(box => {
+                            box.classList.remove('selected-box');
+                        });
+
+                        // Add selected class to this box
+                        e.target.classList.add('selected-box');
+
+                        // Highlight corresponding item in prediction list
+                        document.querySelectorAll('.prediction-item').forEach(item => {
+                            item.classList.remove('prediction-item-selected');
+                            if (item.dataset.vertebra === e.target.dataset.vertebra &&
+                                item.dataset.severity === e.target.dataset.severity) {
+                                item.classList.add('prediction-item-selected');
+                                item.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'nearest'
+                                });
+                            }
+                        });
+                    }
+
+                    // Tooltip functionality
+                    function handleBoxHover(e) {
+                        const box = e.target;
+
+                        // Create tooltip
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'tooltip';
+                        if (box.dataset.type === 'vertebra') {
+                            tooltip.innerHTML = `
                   <div><strong>Vertebra:</strong> ${box.dataset.vertebra}</div>
                   <div><strong>Confidence:</strong> ${box.dataset.confidence}%</div>
               `;
-          } else {
-              tooltip.innerHTML = `
+                        } else {
+                            tooltip.innerHTML = `
                   <div><strong>Level:</strong> ${box.dataset.vertebra}</div>
                   <div><strong>Severity:</strong> ${box.dataset.severity}</div>
                   <div><strong>Confidence:</strong> ${box.dataset.confidence}%</div>
               `;
-          }
+                        }
 
-          // Position tooltip
-          const rect = box.getBoundingClientRect();
-          const containerRect = imageContainer.getBoundingClientRect();
-          tooltip.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
-          tooltip.style.top = `${rect.top - containerRect.top - tooltip.offsetHeight - 5}px`;
+                        // Position tooltip
+                        const rect = box.getBoundingClientRect();
+                        const containerRect = imageContainer.getBoundingClientRect();
+                        tooltip.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
+                        tooltip.style.top = `${rect.top - containerRect.top - tooltip.offsetHeight - 5}px`;
 
-          // Add tooltip to container
-          imageContainer.appendChild(tooltip);
-          box.tooltip = tooltip;
-      }
+                        // Add tooltip to container
+                        imageContainer.appendChild(tooltip);
+                        box.tooltip = tooltip;
+                    }
 
-      function handleBoxHoverEnd(e) {
-          if (e.target.tooltip) {
-              e.target.tooltip.remove();
-              e.target.tooltip = null;
-          }
-      }
+                    function handleBoxHoverEnd(e) {
+                        if (e.target.tooltip) {
+                            e.target.tooltip.remove();
+                            e.target.tooltip = null;
+                        }
+                    }
 
-      // Zoom functionality
-      if (zoomIn) {
-          zoomIn.addEventListener('click', () => {
-              if (scale < maxScale) {
-                  scale += scaleStep;
-                  updateZoom();
-              }
-          });
-      }
+                    // Zoom functionality
+                    if (zoomIn) {
+                        zoomIn.addEventListener('click', () => {
+                            if (scale < maxScale) {
+                                scale += scaleStep;
+                                updateZoom();
+                            }
+                        });
+                    }
 
-      if (zoomOut) {
-          zoomOut.addEventListener('click', () => {
-              if (scale > minScale) {
-                  scale -= scaleStep;
-                  updateZoom();
-              }
-          });
-      }
+                    if (zoomOut) {
+                        zoomOut.addEventListener('click', () => {
+                            if (scale > minScale) {
+                                scale -= scaleStep;
+                                updateZoom();
+                            }
+                        });
+                    }
 
-      if (zoomReset) {
-          zoomReset.addEventListener('click', () => {
-              fitImageToContainer(); // Reset to fitted size instead of scale = 1
-          });
-      }
+                    if (zoomReset) {
+                        zoomReset.addEventListener('click', () => {
+                            fitImageToContainer(); // Reset to fitted size instead of scale = 1
+                        });
+                    }
 
-      function updateZoom() {
-          if (annotationImage) {
-              annotationImage.style.transform = `scale(${scale})`;
-              annotationImage.style.transformOrigin = 'center center';
-              // Re-render boxes to match new scale, maintaining selected severity prediction
-              setTimeout(() => renderBoxes(selectedPredictionIndex), 10);
-          }
-      }
+                    function updateZoom() {
+                        if (annotationImage) {
+                            annotationImage.style.transform = `scale(${scale})`;
+                            annotationImage.style.transformOrigin = 'center center';
+                            // Re-render boxes to match new scale, maintaining selected severity prediction
+                            setTimeout(() => renderBoxes(selectedPredictionIndex), 10);
+                        }
+                    }
 
-      // Opacity control
-      if (boxOpacity) {
-          boxOpacity.addEventListener('input', () => {
-              document.querySelectorAll('.bounding-box').forEach(box => {
-                  box.style.opacity = boxOpacity.value;
-              });
-          });
-      }
+                    // Opacity control
+                    if (boxOpacity) {
+                        boxOpacity.addEventListener('input', () => {
+                            document.querySelectorAll('.bounding-box').forEach(box => {
+                                box.style.opacity = boxOpacity.value;
+                            });
+                        });
+                    }
 
-      // Show/hide controls for vertebrae
-      if (showVertebraeCheckbox) {
-          showVertebraeCheckbox.addEventListener('change', () => {
-              // Re-render with current selected severity prediction (if any) and updated vertebrae visibility
-              renderBoxes(selectedPredictionIndex);
-          });
-      }
+                    // Show/hide controls for vertebrae
+                    if (showVertebraeCheckbox) {
+                        showVertebraeCheckbox.addEventListener('change', () => {
+                            // Re-render with current selected severity prediction (if any) and updated vertebrae visibility
+                            renderBoxes(selectedPredictionIndex);
+                        });
+                    }
 
-      // Prediction list item click
-      if (predictionList) {
-          document.querySelectorAll('.prediction-item').forEach((item, index) => {
-              item.addEventListener('click', function() {
-                  // Highlight this item
-                  document.querySelectorAll('.prediction-item').forEach(i => {
-                      i.classList.remove('prediction-item-selected');
-                  });
-                  this.classList.add('prediction-item-selected');
+                    // Prediction list item click
+                    if (predictionList) {
+                        document.querySelectorAll('.prediction-item').forEach((item, index) => {
+                            item.addEventListener('click', function() {
+                                // Hide all severity controls first
+                                document.querySelectorAll('.severity-controls').forEach(controls => {
+                                    controls.classList.add('hidden');
+                                });
 
-                  // Get the prediction index from the actual index in the list
-                  const predictionIndex = index;
-                  
-                  // Render the bounding box for this prediction (along with any visible vertebrae)
-                  selectedPredictionIndex = predictionIndex;
-                  renderBoxes(predictionIndex);
+                                // Highlight this item
+                                document.querySelectorAll('.prediction-item').forEach(i => {
+                                    i.classList.remove('prediction-item-selected');
+                                });
+                                this.classList.add('prediction-item-selected');
 
-                  // Update selection details panel if elements exist
-                  if (selectionDetails && selectedVertebra && selectedSeverity && selectedConfidence) {
-                      selectedVertebra.textContent = this.dataset.vertebra || '';
-                      selectedSeverity.textContent = this.dataset.severity || '';
-                      selectedConfidence.textContent = this.dataset.confidence || '';
-                      selectionDetails.classList.remove('hidden');
-                  }
-              });
-          });
-      }
-  });
-</script>
-{% endblock %}
+                                // Show severity controls for this item
+                                const severityControls = this.querySelector('.severity-controls');
+                                if (severityControls) {
+                                    severityControls.classList.remove('hidden');
+                                }
+
+                                // Get the prediction index from the actual index in the list
+                                const predictionIndex = index;
+
+                                // Render the bounding box for this prediction (along with any visible vertebrae)
+                                selectedPredictionIndex = predictionIndex;
+                                renderBoxes(predictionIndex);
+                            });
+                        });
+                    }
+                    
+
+                // Update severity button click handler
+                if (updateSeverityBtn) {
+                    updateSeverityBtn.addEventListener('click', function() {
+                        if (!selectedPredictionId || !severityDropdown.value) {
+                            alert('Please select a prediction and severity');
+                            return;
+                        }
+
+                        // Get CSRF token
+                        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+                        // Send update request
+                        fetch('{% url "validation:update_validation_severity" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken,
+                                },
+                                body: JSON.stringify({
+                                    prediction_id: selectedPredictionId,
+                                    severity: severityDropdown.value
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
+                                    alert('Error: ' + data.error);
+                                } else {
+                                    alert('Severity updated successfully!');
+                                    // Update the display
+                                    const selectedItem = document.querySelector('.prediction-item-selected');
+                                    if (selectedItem) {
+                                        selectedItem.dataset.severity = severityDropdown.value;
+                                        selectedItem.querySelector('div:nth-child(3)').innerHTML = '<span class="font-medium">Severity:</span> ' + severityDropdown.value;
+                                    }
+                                    // Update the selected severity display
+                                    selectedSeverity.textContent = severityDropdown.value;
+                                    // Re-render boxes to update colors
+                                    renderBoxes(selectedPredictionIndex);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Failed to update severity');
+                            });
+                    });
+                }
+
+                // Initialize validations when page loads - no longer needed as template handles display
+                });
+                // Add event listeners for severity update buttons
+                document.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('update-severity-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const predictionItem = e.target.closest('.prediction-item');
+                        const dropdown = predictionItem.querySelector('.severity-dropdown');
+                        const severityText = predictionItem.querySelector('.severity-text');
+                        const predictionId = predictionItem.dataset.predictionId;
+                        const newSeverity = dropdown.value;
+
+                        // Update via API
+                        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                        fetch('{% url "validation:update_validation_severity" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                body: JSON.stringify({
+                                    prediction_id: predictionId,
+                                    severity: newSeverity
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.message) {
+                                    // Update the display
+                                    severityText.textContent = newSeverity;
+                                    predictionItem.dataset.validationSeverity = newSeverity;
+
+                                    // Update modification status
+                                    const originalSeverity = predictionItem.dataset.severity;
+                                    const isModified = newSeverity !== originalSeverity;
+                                    predictionItem.dataset.isModified = isModified ? 'true' : 'false';
+                                    predictionItem.dataset.isValidated = 'false'; // Reset validation status
+                                    
+                                    // Remove all status classes first
+                                    predictionItem.classList.remove('bg-yellow-100', 'dark:bg-yellow-900', 'bg-green-100', 'dark:bg-green-900');
+                                    
+                                    // Remove any existing status indicators
+                                    const existingIndicator = predictionItem.querySelector('.modified-info, .validated-info');
+                                    if (existingIndicator) {
+                                        existingIndicator.remove();
+                                    }
+                                    
+                                    // Update background color and add appropriate indicator
+                                    if (isModified) {
+                                        predictionItem.classList.add('bg-yellow-100', 'dark:bg-yellow-900');
+                                        
+                                        // Add modified indicator
+                                        const severityDisplay = predictionItem.querySelector('.severity-display');
+                                        const modifiedIndicator = document.createElement('div');
+                                        modifiedIndicator.className = 'text-xs text-gray-500 dark:text-gray-400 mt-1 modified-info';
+                                        modifiedIndicator.innerHTML = `
+                                            <span class="text-yellow-600 dark:text-yellow-400">(Modified)</span>
+                                            <br>
+                                            <span class="font-medium">Original:</span> 
+                                            <span class="original-severity">${originalSeverity}</span>
+                                        `;
+                                        severityDisplay.appendChild(modifiedIndicator);
+                                    }
+
+                                    // Hide controls
+                                    const controls = predictionItem.querySelector('.severity-controls');
+                                    controls.classList.add('hidden');
+
+                                    // Show success message
+                                    alert('Validation updated successfully!');
+                                } else {
+                                    alert('Error updating validation: ' + (data.error || 'Unknown error'));
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Error updating validation');
+                            });
+                    }
+
+                    if (e.target.classList.contains('cancel-severity-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const predictionItem = e.target.closest('.prediction-item');
+                        const controls = predictionItem.querySelector('.severity-controls');
+                        const dropdown = predictionItem.querySelector('.severity-dropdown');
+
+                        // Reset dropdown to original validation value
+                        dropdown.value = predictionItem.dataset.validationSeverity;
+
+                        // Hide controls
+                        controls.classList.add('hidden');
+                    }
+
+                    if (e.target.id === 'submit-all-validations') {
+                        e.preventDefault();
+                        
+                        const runId = e.target.dataset.runId;
+                        const examId = '{{ exam.id }}';
+                        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                        
+                        if (confirm('Are you sure you want to submit all validations for this exam? This action cannot be undone.')) {
+                            fetch('{% url "validation:submit_all_validations" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                body: JSON.stringify({
+                                    run_id: runId,
+                                    exam_id: examId
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.message) {
+                                    alert(data.message);
+                                    // Optionally reload the page or update UI
+                                    location.reload();
+                                } else {
+                                    alert('Error submitting validations: ' + (data.error || 'Unknown error'));
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Error submitting validations');
+                            });
+                        }
+                    }
+                });
+
+                // Initialize validations when page loads - no longer needed as template handles display
+
+            // Add keyboard navigation (outside the image container logic)
+            document.addEventListener('keydown', function(e) {
+                // Only handle navigation if no input/textarea is focused
+                if (document.activeElement.tagName === 'INPUT' || 
+                    document.activeElement.tagName === 'TEXTAREA' || 
+                    document.activeElement.tagName === 'SELECT') {
+                    return;
+                }
+
+                // Arrow key navigation
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    const previousUrl = document.querySelector('a[title*="Previous Exam"]');
+                    if (previousUrl) {
+                        e.preventDefault();
+                        window.location.href = previousUrl.href;
+                    }
+                } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    const nextUrl = document.querySelector('a[title*="Next Exam"]');
+                    if (nextUrl) {
+                        e.preventDefault();
+                        window.location.href = nextUrl.href;
+                    }
+                }
+            });
+    </script>
+{% endblock extra_js %}

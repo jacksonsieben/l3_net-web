@@ -74,13 +74,15 @@ class RunAssignment(models.Model):
         """
         Calculate validation progress for this assignment.
         Returns a dictionary with progress information.
+        Only counts validations that have been submitted (have validated_at timestamp).
         """
         # Get all severity predictions for this run
         total_predictions = self.run.predicted_severities.count()
         
-        # Count how many have been validated by this user
+        # Count how many have been validated AND submitted by this user
         validated_predictions = self.run.predicted_severities.filter(
-            validations__user_id=self.user
+            validations__user_id=self.user,
+            validations__validated_at__isnull=False  # Only count submitted validations
         ).distinct().count()
         
         if total_predictions == 0:
@@ -113,3 +115,9 @@ class RunAssignment(models.Model):
             self.save()
         
         return self.is_completed
+
+    @property
+    def completion_percentage(self):
+        """Return the completion percentage for this assignment."""
+        progress = self.get_validation_progress()
+        return progress['percentage_complete']

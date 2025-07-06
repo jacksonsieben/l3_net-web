@@ -9,6 +9,8 @@ urlpatterns = [
     path('exams/<int:pk>/', views.ExamDetailView.as_view(), name='exam_detail'),
     path('exams/<int:exam_id>/image/<int:run_id>/', views.stream_exam_image, name='exam_image'),
     path('api/exam/<int:pk>/', views.get_exam_data, name='get_exam_data'),
+    path('api/validation/update-severity/', views.update_validation_severity, name='update_validation_severity'),
+    path('api/validation/submit-all/', views.submit_all_validations, name='submit_all_validations'),
     
     # Admin-only URLs
     path('admin/exam/create/', views.AdminExamCreateView.as_view(), name='admin_exam_create'),

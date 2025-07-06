@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/exam/<int:pk>/', views.get_exam_data, name='get_exam_data'),
     path('api/validation/update-severity/', views.update_validation_severity, name='update_validation_severity'),
     path('api/validation/submit-all/', views.submit_all_validations, name='submit_all_validations'),
+    path('api/run/update-status/', views.update_run_status, name='update_run_status'),
     
     # Admin-only URLs
     path('admin/exam/create/', views.AdminExamCreateView.as_view(), name='admin_exam_create'),

@@ -1,33 +1,29 @@
-from django.shortcuts import render, get_object_or_404
-from django.views.generic import ListView, DetailView, CreateView, FormView, UpdateView, DeleteView
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse, Http404, HttpResponseRedirect, HttpResponse, StreamingHttpResponse
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.utils.decorators import method_decorator
-from django.urls import reverse_lazy, reverse
-from django.contrib.auth import get_user_model
-from django import forms
-from django.db.models import Count, Q
+from django.views.generic import ListView, DetailView, FormView
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.urls import reverse_lazy
+from django.http import JsonResponse, Http404, HttpResponse, HttpResponseRedirect
+from django.db.models import Count, F, Case, When, Q
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
+from django.contrib.admin.views.decorators import staff_member_required
+from django import forms
 import json
 import os
+
 from huggingface_hub import hf_hub_download
 
-User = get_user_model()
-
-from .models.exam import Exam
-from .models.run import Run
-from .models.polygon import Polygon
-from .models.pred_severity import PredSeverity
-from .models.pred_vertebra import PredVertebra
-from .models.model_version import ModelVersion
-from .models.run_assignment import RunAssignment
-from .models.validation import Validation
+from .models import Exam, Run, RunAssignment, PredSeverity, Validation, PredVertebra
+from .enums.run_status import RunStatus
 from .enums.severity import Severity
 
-User = get_user_model()
+from users.models import CustomUser
 
 # Create your views here.
 class RunAssignmentListView(LoginRequiredMixin, ListView):
@@ -44,13 +40,13 @@ class RunAssignmentListView(LoginRequiredMixin, ListView):
                 'run', 'user', 'assigned_by'
             ).order_by('-assigned_at')
         else:
-            print("User is not a superuser, filtering assignments")
-            print(self.request.user)
-            # Regular users only see their own assignments
+            # Regular users only see their own assignments, excluding cancelled runs
             return RunAssignment.objects.filter(
                 user=self.request.user
+            ).exclude(
+                run__status='Cancelled'
             ).select_related(
-                'run'
+                'run', 'assigned_by'
             ).order_by('-assigned_at')
     
     def get_context_data(self, **kwargs):
@@ -67,10 +63,17 @@ class RunAssignmentListView(LoginRequiredMixin, ListView):
             completed_assignments = RunAssignment.objects.filter(is_completed=True).count()
             context['showing_all_users'] = True
         else:
-            total_assignments = RunAssignment.objects.filter(user=self.request.user).count()
+            # For regular users, only count assignments for non-cancelled runs
+            total_assignments = RunAssignment.objects.filter(
+                user=self.request.user
+            ).exclude(
+                run__status='Cancelled'
+            ).count()
             completed_assignments = RunAssignment.objects.filter(
                 user=self.request.user, 
                 is_completed=True
+            ).exclude(
+                run__status='Cancelled'
             ).count()
             context['showing_all_users'] = False
         
@@ -91,6 +94,34 @@ class ExamListView(LoginRequiredMixin, ListView):
     template_name = 'validation/exam_list.html'
     context_object_name = 'exams'
     login_url = '/users/login/'
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Check run status and redirect if necessary."""
+        run_id = request.GET.get('run')
+        
+        if run_id:
+            try:
+                run = Run.objects.get(id=run_id)
+                
+                # Check if user has access to this run (unless they're a superuser)
+                if not request.user.is_superuser:
+                    if not RunAssignment.objects.filter(user=request.user, run=run).exists():
+                        messages.error(request, "You don't have permission to access this run.")
+                        return redirect('validation:run_assignment_list')
+                
+                # Check run status and redirect if needed
+                if run.status == RunStatus.OPEN:
+                    messages.warning(request, f"Run '{run.name}' is still open and not ready for validation.")
+                    return redirect('validation:run_assignment_list')
+                elif run.status == RunStatus.CANCELLED:
+                    messages.error(request, f"Run '{run.name}' has been cancelled and is no longer available.")
+                    return redirect('validation:run_assignment_list')
+                
+            except Run.DoesNotExist:
+                messages.error(request, "The requested run does not exist.")
+                return redirect('validation:run_assignment_list')
+        
+        return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
         # Check if filtering by run
@@ -230,6 +261,39 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
     template_name = 'validation/exam_detail.html'
     context_object_name = 'exam'
     login_url = '/users/login/'
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Check run status and control access based on it."""
+        run_id = request.GET.get('run')
+        
+        if run_id:
+            try:
+                run = Run.objects.get(id=run_id)
+                
+                # Check if user has access to this run (unless they're a superuser)
+                if not request.user.is_superuser:
+                    if not RunAssignment.objects.filter(user=request.user, run=run).exists():
+                        messages.error(request, "You don't have permission to access this run.")
+                        return redirect('validation:run_assignment_list')
+                
+                # Check run status and redirect if needed
+                if run.status == RunStatus.OPEN:
+                    messages.warning(request, f"Run '{run.name}' is still open and not ready for validation.")
+                    return redirect('validation:run_assignment_list')
+                elif run.status == RunStatus.CANCELLED:
+                    messages.error(request, f"Run '{run.name}' has been cancelled and is no longer available.")
+                    return redirect('validation:run_assignment_list')
+                
+                # Store run status for context
+                self.run_status = run.status
+                
+            except Run.DoesNotExist:
+                messages.error(request, "The requested run does not exist.")
+                return redirect('validation:run_assignment_list')
+        else:
+            self.run_status = None
+        
+        return super().dispatch(request, *args, **kwargs)
     
     def get_object(self, queryset=None):
         """Override to check if user has access to this exam through run assignments."""
@@ -433,6 +497,12 @@ class ExamDetailView(LoginRequiredMixin, DetailView):
         # Add navigation to next/previous exams (always, regardless of predictions)
         self._add_navigation_context(context)
         
+        # Add run status to context for template access control
+        if hasattr(self, 'run_status') and self.run_status:
+            context['run_status'] = self.run_status
+        elif 'run' in context:
+            context['run_status'] = context['run'].status
+        
         return context
     
     def _add_navigation_context(self, context):
@@ -621,7 +691,7 @@ class RunAssignmentForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
     user = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True),
+        queryset=CustomUser.objects.filter(is_active=True),
         empty_label="Select a user...",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
@@ -678,9 +748,9 @@ class AdminRunAssignmentView(FormView):
         context['unassigned_runs'] = Run.objects.filter(assignments__isnull=True).count()
         
         # Get user statistics
-        context['total_users'] = User.objects.filter(is_active=True).count()
-        context['users_with_assignments'] = User.objects.filter(run_assignments__isnull=False).distinct().count()
-        
+        context['total_users'] = CustomUser.objects.filter(is_active=True).count()
+        context['users_with_assignments'] = CustomUser.objects.filter(run_assignments__isnull=False).distinct().count()
+
         return context
 
 @method_decorator(staff_member_required, name='dispatch')
@@ -1037,6 +1107,35 @@ def submit_all_validations(request):
             'count': updated_count
         })
         
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@staff_member_required
+def update_run_status(request):
+    """API endpoint to update the status of a run."""
+    try:
+        data = json.loads(request.body)
+        run_id = data.get('run_id')
+        new_status = data.get('status')
+        
+        if not run_id or new_status is None:
+            return JsonResponse({'error': 'Invalid data'}, status=400)
+        
+        # Validate the new status value
+        from .enums.run_status import RunStatus
+        if new_status not in [status.value for status in RunStatus]:
+            return JsonResponse({'error': 'Invalid status value'}, status=400)
+        
+        # Update the run status
+        run = Run.objects.get(id=run_id)
+        run.status = new_status
+        run.save()
+        
+        return JsonResponse({'message': 'Run status updated successfully'})
+    except Run.DoesNotExist:
+        return JsonResponse({'error': 'Run not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 

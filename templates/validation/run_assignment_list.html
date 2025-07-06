@@ -82,6 +82,37 @@
     </div>
   </div>
 
+  <!-- Status Legend -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 transition-colors">
+    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Run Status Guide</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+          Open
+        </span>
+        <span class="text-sm text-gray-600 dark:text-gray-400">Not ready for validation</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
+          In Progress
+        </span>
+        <span class="text-sm text-gray-600 dark:text-gray-400">Available for validation</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+          Run Complete
+        </span>
+        <span class="text-sm text-gray-600 dark:text-gray-400">Review only</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+          Cancelled
+        </span>
+        <span class="text-sm text-gray-600 dark:text-gray-400">No longer available</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Progress Bar -->
   {% if total_assignments > 0 %}
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 transition-colors">
@@ -127,6 +158,8 @@
                   <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 transition-colors">
                     {{ assignment.run.name }}
                   </h4>
+                  
+                  <!-- Assignment Status Badge -->
                   {% if assignment.is_completed %}
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 transition-colors">
                       Completed
@@ -134,6 +167,25 @@
                   {% else %}
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 transition-colors">
                       Pending
+                    </span>
+                  {% endif %}
+                  
+                  <!-- Run Status Badge -->
+                  {% if assignment.run.status == 'Open' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 transition-colors">
+                      Open
+                    </span>
+                  {% elif assignment.run.status == 'In Progress' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 transition-colors">
+                      In Progress
+                    </span>
+                  {% elif assignment.run.status == 'Completed' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 transition-colors">
+                      Run Complete
+                    </span>
+                  {% elif assignment.run.status == 'Cancelled' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 transition-colors">
+                      Cancelled
                     </span>
                   {% endif %}
                 </div>
@@ -194,17 +246,45 @@
           </div>
           
           <div class="flex-shrink-0 ml-4">
-            <a href="{% url 'validation:exam_list' %}?run={{ assignment.run.id }}" 
-               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-              {% if assignment.is_completed %}
-                Review Exams
-              {% else %}
-                Start Validation
-              {% endif %}
-              <svg class="ml-2 -mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-              </svg>
-            </a>
+            {% if assignment.run.status == 'Cancelled' %}
+              <span class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 cursor-not-allowed">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                </svg>
+                Cancelled
+              </span>
+            {% elif assignment.run.status == 'Open' %}
+              <span class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 cursor-not-allowed">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+                Not Started
+              </span>
+            {% elif assignment.run.status == 'Completed' %}
+              <a href="{% url 'validation:exam_list' %}?run={{ assignment.run.id }}" 
+                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                Review Only
+              </a>
+            {% elif assignment.run.status == 'In Progress' %}
+              <a href="{% url 'validation:exam_list' %}?run={{ assignment.run.id }}" 
+                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                {% if assignment.is_completed %}
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  Review Work
+                {% else %}
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                  Start Validation
+                {% endif %}
+              </a>
+            {% endif %}
           </div>
         </div>
       </div>

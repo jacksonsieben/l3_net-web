@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Manage Runs - Admin{% endblock %}
+{% block title %}Manage Runs - Admin{% endblock title %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container mx-auto px-4 py-6">
   <!-- Header with search -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
@@ -134,6 +135,17 @@
                   <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">
                     {{ run.prediction_count }} prediction{{ run.prediction_count|pluralize }}
                   </span>
+                  <!-- Status Display and Change -->
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">Status:</span>
+                    <select class="status-dropdown text-xs bg-white dark:bg-gray-400 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                            data-run-id="{{ run.id }}" data-original-status="{{ run.status }}">
+                      <option value="Open" {% if run.status == "Open" %}selected{% endif %}>Open</option>
+                      <option value="In Progress" {% if run.status == "In Progress" %}selected{% endif %}>In Progress</option>
+                      <option value="Completed" {% if run.status == "Completed" %}selected{% endif %}>Completed</option>
+                      <option value="Cancelled" {% if run.status == "Cancelled" %}selected{% endif %}>Cancelled</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -254,4 +266,72 @@
   </div>
   {% endif %}
 </div>
-{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle status dropdown changes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('status-dropdown')) {
+            const dropdown = e.target;
+            const runId = dropdown.dataset.runId;
+            const originalStatus = dropdown.dataset.originalStatus;
+            const newStatus = dropdown.value;
+            
+            if (newStatus === originalStatus) {
+                return; // No change
+            }
+            
+            if (confirm(`Are you sure you want to change the status to "${newStatus}"?`)) {
+                // Get CSRF token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+                
+                // Send update request
+                fetch('{% url "validation:update_run_status" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        run_id: runId,
+                        status: newStatus
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        // Update the original status
+                        dropdown.dataset.originalStatus = newStatus;
+                        
+                        // Show success message
+                        const successMsg = document.createElement('div');
+                        successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+                        successMsg.textContent = 'Status updated successfully!';
+                        document.body.appendChild(successMsg);
+                        
+                        // Remove message after 3 seconds
+                        setTimeout(() => {
+                            successMsg.remove();
+                        }, 3000);
+                    } else {
+                        alert('Error updating status: ' + (data.error || 'Unknown error'));
+                        // Revert dropdown to original value
+                        dropdown.value = originalStatus;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating status');
+                    // Revert dropdown to original value
+                    dropdown.value = originalStatus;
+                });
+            } else {
+                // User cancelled, revert dropdown
+                dropdown.value = originalStatus;
+            }
+        }
+    });
+});
+</script>
+
+{% endblock content %}

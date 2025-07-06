@@ -1,5 +1,7 @@
 from django.db import models
 
+from validation.enums.run_status import RunStatus
+
 class Run(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(
@@ -17,6 +19,12 @@ class Run(models.Model):
         blank=True, 
         null=True, 
         help_text="Optional description of this run"
+    )
+    status = models.CharField(
+        choices=RunStatus.choices,
+        max_length=20,
+        default=RunStatus.OPEN,
+        help_text="Current status of this run"
     )
     
     class Meta:

@@ -986,12 +986,15 @@ def stream_exam_image(request, exam_id, run_id):
         # Download the image from Hugging Face
         repo_id = "sieben-ips/l3net"
         
-        # Use hf_hub_download to get the file
+        # Use hf_hub_download to get the file with a specific cache directory
+        import tempfile
+        cache_dir = tempfile.gettempdir()
         downloaded_file = hf_hub_download(
             repo_id=repo_id,
             filename=file_path,
             token=hf_token,
-            repo_type="dataset"
+            repo_type="dataset",
+            cache_dir=cache_dir
         )
         
         # Read and stream the original image without modifications

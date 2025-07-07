@@ -140,3 +140,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20
 }
+
+# Hugging Face Configuration
+HF_TOKEN = os.getenv('HF_TOKEN', '')
+HF_REPO_ID = os.getenv('HF_REPO_ID', 'sieben-ips/l3net')

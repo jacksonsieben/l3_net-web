@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load widget_tweaks %}
 
-{% block title %}Admin - Assign Runs{% endblock %}
+{% block title %}Admin - Assign Runs{% endblock title %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
@@ -232,7 +232,7 @@
             </div>
 
             <!-- Quick Actions Card -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors">
+            {% comment %} <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors">
                 <div class="flex items-center space-x-2 mb-4">
                     <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
@@ -246,7 +246,7 @@
                         </svg>
                         Create New Exam
                     </a>
-                    <a href="/api/status/" target="_blank" class="block w-full bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-md transition duration-200 text-center">
+                    <a href="{% url 'validation_api:status' %}" target="_blank" class="block w-full bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-md transition duration-200 text-center">
                         <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                         </svg>
@@ -260,8 +260,8 @@
                         Django Admin
                     </a>
                 </div>
-            </div>
+            </div> {% endcomment %}
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}

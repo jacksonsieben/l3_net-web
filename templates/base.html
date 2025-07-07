@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      {% block title %}L3Net - Spinal Stenosis Validation{% endblock %}
-    </title>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="description" content="L3Net - Web application for spinal stenosis validation and assessment" />
+      <meta name="keywords" content="L3Net, spinal stenosis, validation, medical imaging, radiology, spine assessment" />
+      <title>
+        {% block title %}L3Net - Spinal Stenosis Validation{% endblock title %}
+      </title>
     
     <!-- Favicon -->
     {% load static %}
@@ -31,7 +33,7 @@
         }
       }
     </script>
-    {% block extra_head %}{% endblock %}
+    {% block extra_head %}{% endblock extra_head %}
   </head>
   <body class="bg-gray-100 dark:bg-gray-900 min-h-screen transition-colors duration-300">
     <!-- Navigation Bar -->
@@ -58,6 +60,12 @@
               href="{% url 'validation:exam_list' %}"
               class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >All Exams</a
+            >
+            <span class="text-gray-500 dark:text-gray-400">|</span>
+            <a
+              href="{% url 'validation:admin_exam_list' %}"
+              class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors"
+              >Exams</a
             >
             <span class="text-gray-500 dark:text-gray-400">|</span>
             <a
@@ -169,6 +177,9 @@
             <a href="{% url 'validation:exam_list' %}" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors">
               All Exams
             </a>
+            <a href="{% url 'validation:admin_exam_list' %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 py-1 transition-colors">
+              Exams
+            </a>
             <a href="{% url 'validation:admin_run_list' %}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 py-1 transition-colors">
               Runs
             </a>
@@ -198,12 +209,12 @@
     ></div>
 
     <!-- Main Content -->
-    <main>{% block content %}{% endblock %}</main>
+    <main>{% block content %}{% endblock content %}</main>
 
     <!-- Footer -->
     <footer class="bg-white dark:bg-gray-800 shadow-inner mt-8 py-4 transition-colors duration-300">
       <div class="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400">
-        <p>&copy; 2025 L3Net - Spinal Stenosis Validation</p>
+        <p>© 2025 L3Net - Spinal Stenosis Validation</p>
       </div>
     </footer>
 
@@ -367,6 +378,6 @@
       });
     </script>
 
-    {% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock extra_js %}
   </body>
 </html>

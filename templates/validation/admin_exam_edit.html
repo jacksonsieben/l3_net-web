@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load widget_tweaks %}
 
-{% block title %}Admin - Edit Exam{% endblock %}
+{% block title %}Admin - Edit Exam{% endblock title %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
@@ -31,6 +31,11 @@
                     <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200 transition-colors">Exam Details</h3>
                     <div class="mt-2 text-sm text-blue-700 dark:text-blue-300 transition-colors">
                         <p><strong>ID:</strong> {{ exam.id }}</p>
+                        <p><strong>Current Version:</strong> 
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                {{ exam.version|default:"main" }}
+                            </span>
+                        </p>
                         <p><strong>Created:</strong> {{ exam.created_at|date:"F j, Y, g:i A" }}</p>
                         <p><strong>Last Updated:</strong> {{ exam.updated_at|date:"F j, Y, g:i A" }}</p>
                         {% if associated_runs %}
@@ -80,6 +85,24 @@
                     {% if form.image_path.errors %}
                         <div class="mt-1">
                             {% for error in form.image_path.errors %}
+                                <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Version Field -->
+                <div>
+                    <label for="{{ form.version.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors">
+                        Dataset Version <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.version|add_class:"w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500" }}
+                    {% if form.version.help_text %}
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors">{{ form.version.help_text }}</p>
+                    {% endif %}
+                    {% if form.version.errors %}
+                        <div class="mt-1">
+                            {% for error in form.version.errors %}
                                 <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
                             {% endfor %}
                         </div>
@@ -139,4 +162,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}

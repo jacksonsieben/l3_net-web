@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load widget_tweaks %}
 
-{% block title %}L3Net – Login{% endblock %}
+{% block title %}L3Net – Login{% endblock title %}
 
 {% block extra_head %}
 <style>
@@ -10,7 +10,7 @@
     display: none !important;
   }
 </style>
-{% endblock %}
+{% endblock extra_head %}
 
 {% block content %}
 <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -80,7 +80,7 @@
     </div>
   </div>
 </div>
-{% endblock %}
+{% endblock content %}
 
 {% block extra_js %}
 <script>
@@ -156,4 +156,4 @@
     }
   });
 </script>
-{% endblock %}
+{% endblock extra_js %}

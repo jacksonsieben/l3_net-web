@@ -7,13 +7,19 @@ urlpatterns = [
     path('', views.RunAssignmentListView.as_view(), name='run_assignment_list'),
     path('exams/', views.ExamListView.as_view(), name='exam_list'),
     path('exams/<int:pk>/', views.ExamDetailView.as_view(), name='exam_detail'),
-    path('exams/<int:exam_id>/image/<int:run_id>/', views.stream_exam_image, name='exam_image'),
+    path('exams/<int:exam_id>/image/', views.stream_exam_image, name='exam_image'),
     path('api/exam/<int:pk>/', views.get_exam_data, name='get_exam_data'),
     path('api/validation/update-severity/', views.update_validation_severity, name='update_validation_severity'),
     path('api/validation/submit-all/', views.submit_all_validations, name='submit_all_validations'),
     path('api/run/update-status/', views.update_run_status, name='update_run_status'),
     
+    # New API endpoints for version management
+    path('api/hf-versions/', views.get_hf_versions, name='get_hf_versions'),
+    path('api/exams/create/', views.create_exam_api, name='create_exam_api'),
+    path('api/exams/list/', views.list_exams_api, name='list_exams_api'),
+    
     # Admin-only URLs
+    path('admin/exams/', views.AdminExamListView.as_view(), name='admin_exam_list'),
     path('admin/exam/create/', views.AdminExamCreateView.as_view(), name='admin_exam_create'),
     path('admin/exam/<int:pk>/edit/', views.AdminExamEditView.as_view(), name='admin_exam_edit'),
     path('admin/exam/<int:pk>/delete/', views.AdminExamDeleteView.as_view(), name='admin_exam_delete'),

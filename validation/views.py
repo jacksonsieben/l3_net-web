@@ -605,24 +605,61 @@ def get_exam_data(request, pk):
 
 class ExamCreationForm(forms.ModelForm):
     """Form for creating new exams."""
+    version = forms.ChoiceField(
+        choices=[],
+        initial='main',
+        help_text='Select the dataset version from Hugging Face repository'
+    )
+    
     class Meta:
         model = Exam
-        fields = ['external_id', 'image_path']
+        fields = ['external_id', 'image_path', 'version']
         widgets = {
             'external_id': forms.TextInput(attrs={'placeholder': 'e.g., EXAM-2025-001'}),
             'image_path': forms.TextInput(attrs={'placeholder': 'e.g., /path/to/image.png or https://example.com/image.png'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            # Get available versions from Hugging Face
+            versions = Exam.get_available_versions()
+            self.fields['version'].choices = [(v, v) for v in versions]
+        except Exception:
+            # Fallback to main if HF API fails
+            self.fields['version'].choices = [('main', 'main')]
 
 
 class ExamEditForm(forms.ModelForm):
     """Form for editing existing exams."""
+    version = forms.ChoiceField(
+        choices=[],
+        help_text='Select the dataset version from Hugging Face repository'
+    )
+    
     class Meta:
         model = Exam
-        fields = ['external_id', 'image_path']
+        fields = ['external_id', 'image_path', 'version']
         widgets = {
             'external_id': forms.TextInput(attrs={'placeholder': 'e.g., EXAM-2025-001'}),
             'image_path': forms.TextInput(attrs={'placeholder': 'e.g., /path/to/image.png or https://example.com/image.png'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            # Get available versions from Hugging Face
+            versions = Exam.get_available_versions()
+            self.fields['version'].choices = [(v, v) for v in versions]
+        except Exception:
+            # Fallback to main if HF API fails
+            self.fields['version'].choices = [('main', 'main')]
+        
+        # Handle null version values - set to "main" if empty
+        if self.instance and self.instance.pk:
+            if not self.instance.version or self.instance.version.strip() == '':
+                self.instance.version = 'main'
+                self.initial['version'] = 'main'
     
     def clean_external_id(self):
         """Validate that external_id is unique, excluding current instance."""
@@ -959,7 +996,7 @@ class AdminRunAssignView(FormView):
         
         return super().form_valid(form)
 
-def stream_exam_image(request, exam_id, run_id):
+def stream_exam_image(request, exam_id):
     """Stream exam image from Hugging Face dataset."""
     # Get the exam to verify access
     exam = get_object_or_404(Exam, id=exam_id)
@@ -981,7 +1018,7 @@ def stream_exam_image(request, exam_id, run_id):
             return HttpResponse("Hugging Face token not configured", status=500)
         
         # Construct the file path in the dataset
-        file_path = f"validation/{exam.external_id}.jpg"
+        file_path = exam.image_path
         print("Attempting to download file:", file_path)
         # Download the image from Hugging Face
         repo_id = "sieben-ips/l3net"
@@ -992,6 +1029,7 @@ def stream_exam_image(request, exam_id, run_id):
             filename=file_path,
             token=hf_token,
             repo_type="dataset",
+            revision=exam.version or 'main' 
         )
         print("File downloaded successfully:", downloaded_file)
         # Read and stream the original image without modifications
@@ -1139,5 +1177,116 @@ def update_run_status(request):
         return JsonResponse({'error': 'Run not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def get_hf_versions(request):
+    """API endpoint to get available Hugging Face dataset versions"""
+    try:
+        versions = Exam.get_available_versions()
+        return JsonResponse({'versions': versions})
+    except Exception as e:
+        return JsonResponse({'error': 'Failed to fetch versions'}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@staff_member_required
+def create_exam_api(request):
+    """API endpoint to create a new exam"""
+    try:
+        data = json.loads(request.body)
+        
+        # Validate required fields
+        required_fields = ['external_id', 'image_path']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+        
+        # Get version, default to 'main' if not provided
+        version = data.get('version', 'main')
+        
+        # Check if exam with this external_id already exists
+        if Exam.objects.filter(external_id=data['external_id']).exists():
+            return JsonResponse({'error': 'Exam with this external_id already exists'}, status=400)
+        
+        # Create exam
+        exam = Exam.objects.create(
+            external_id=data['external_id'],
+            image_path=data['image_path'],
+            version=version
+        )
+        
+        return JsonResponse({
+            'id': exam.id,
+            'external_id': exam.external_id,
+            'image_path': exam.image_path,
+            'version': exam.version,
+            'created_at': exam.created_at.isoformat(),
+            'updated_at': exam.updated_at.isoformat()
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def list_exams_api(request):
+    """API endpoint to list exams"""
+    try:
+        exams = Exam.objects.all().order_by('-created_at')
+        
+        exam_list = []
+        for exam in exams:
+            exam_list.append({
+                'id': exam.id,
+                'external_id': exam.external_id,
+                'image_path': exam.image_path,
+                'version': exam.version,
+                'created_at': exam.created_at.isoformat(),
+                'updated_at': exam.updated_at.isoformat()
+            })
+        
+        return JsonResponse({'exams': exam_list})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@method_decorator(staff_member_required, name='dispatch')
+class AdminExamListView(ListView):
+    """Admin-only view for managing all exams."""
+    model = Exam
+    template_name = 'validation/admin_exam_list.html'
+    context_object_name = 'exams'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = Exam.objects.prefetch_related(
+            'runs'
+        ).annotate(
+            run_count=Count('runs', distinct=True)
+        ).order_by('-created_at')
+        
+        # Filter by search query if provided
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(external_id__icontains=search) |
+                Q(image_path__icontains=search) |
+                Q(version__icontains=search)
+            )
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('search', '')
+        
+        # Get statistics
+        context['total_exams'] = Exam.objects.count()
+        context['exams_with_runs'] = Exam.objects.filter(runs__isnull=False).distinct().count()
+        context['exams_without_runs'] = Exam.objects.filter(runs__isnull=True).count()
+        
+        return context
 
 

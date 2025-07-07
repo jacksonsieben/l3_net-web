@@ -178,9 +178,9 @@
                 <div class="w-full lg:w-3/4 lg:pr-6">
                     <div id="image-container"
                          class="border border-gray-300 dark:border-gray-600 rounded transition-colors">
-                        {% if exam.image_path and run %}
+                        {% if exam.image_path %}
                             <img id="annotation-image"
-                                 src="{% url 'validation:exam_image' exam.id run.id %}"
+                                 src="{% url 'validation:exam_image' exam.id %}"
                                  alt="Medical Image"
                                  width="100%"
                                  height="auto" />

@@ -42,11 +42,12 @@ class ExamCreateSerializer(serializers.ModelSerializer):
         model = Exam
         fields = ['external_id', 'image_path']
     
-    def validate_external_id(self, value):
-        """Validate that external_id is unique."""
-        if Exam.objects.filter(external_id=value).exists():
-            raise serializers.ValidationError("An exam with this external ID already exists.")
-        return value
+    def create(self, validated_data):
+        # Ensure the external_id is unique
+        if Exam.objects.filter(external_id=validated_data['external_id']).exists():
+            raise serializers.ValidationError("An exam with this external_id already exists.")
+        
+        return super().create(validated_data)
 
 
 class PredVertebraSerializer(serializers.ModelSerializer):

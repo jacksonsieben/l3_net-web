@@ -991,7 +991,7 @@ def stream_exam_image(request, exam_id, run_id):
             repo_id=repo_id,
             filename=file_path,
             token=hf_token,
-            repo_type="dataset"
+            repo_type="dataset",
         )
         print("File downloaded successfully:", downloaded_file)
         # Read and stream the original image without modifications

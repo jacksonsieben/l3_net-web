@@ -16,7 +16,9 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       HF_TOKEN: ${HF_TOKEN}
-      HF_HUB_CACHE: /tmp/huggingface
+      HF_HOME: /app/tmp/huggingface
+      HF_HUB_CACHE: /app/tmp/huggingface/hub
+      HF_DATASETS_CACHE: /app/tmp/huggingface/datasets
     depends_on:
       - db
     volumes:

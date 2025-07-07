@@ -1197,34 +1197,24 @@ def create_exam_api(request):
     try:
         data = json.loads(request.body)
         
-        # Validate required fields
-        required_fields = ['external_id', 'image_path']
-        for field in required_fields:
-            if field not in data:
-                return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+        # Use the serializer for validation
+        from .serializers import ExamCreateSerializer
+        serializer = ExamCreateSerializer(data=data)
         
-        # Get version, default to 'main' if not provided
-        version = data.get('version', 'main')
-        
-        # Check if exam with this external_id already exists
-        if Exam.objects.filter(external_id=data['external_id']).exists():
-            return JsonResponse({'error': 'Exam with this external_id already exists'}, status=400)
-        
-        # Create exam
-        exam = Exam.objects.create(
-            external_id=data['external_id'],
-            image_path=data['image_path'],
-            version=version
-        )
-        
-        return JsonResponse({
-            'id': exam.id,
-            'external_id': exam.external_id,
-            'image_path': exam.image_path,
-            'version': exam.version,
-            'created_at': exam.created_at.isoformat(),
-            'updated_at': exam.updated_at.isoformat()
-        })
+        if serializer.is_valid():
+            exam = serializer.save()
+            
+            return JsonResponse({
+                'id': exam.id,
+                'external_id': exam.external_id,
+                'image_path': exam.image_path,
+                'version': exam.version,
+                'created_at': exam.created_at.isoformat(),
+                'updated_at': exam.updated_at.isoformat()
+            })
+        else:
+            return JsonResponse({'error': serializer.errors}, status=400)
+            
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:

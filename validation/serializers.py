@@ -31,21 +31,50 @@ class ExamSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Exam
-        fields = ['id', 'external_id', 'image_path', 'created_at']
+        fields = ['id', 'external_id', 'image_path', 'version', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
 class ExamCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating new exams."""
+    version = serializers.CharField(required=False, default='main')
     
     class Meta:
         model = Exam
-        fields = ['external_id', 'image_path']
+        fields = ['external_id', 'image_path', 'version']
+    
+    def validate_version(self, value):
+        """Validate that the version exists in the Hugging Face repository."""
+        if not value:
+            return 'main'
+        
+        try:
+            # Get available versions from Hugging Face
+            available_versions = Exam.get_available_versions()
+            if value not in available_versions:
+                raise serializers.ValidationError(
+                    f"Version '{value}' does not exist in the Hugging Face repository. "
+                    f"Available versions: {', '.join(available_versions)}"
+                )
+            return value
+        except Exception as e:
+            # If we can't validate against HF, allow 'main' but reject others
+            if value == 'main':
+                return value
+            else:
+                raise serializers.ValidationError(
+                    f"Unable to validate version against Hugging Face repository. "
+                    f"Error: {str(e)}. Please use 'main' as default."
+                )
     
     def create(self, validated_data):
         # Ensure the external_id is unique
         if Exam.objects.filter(external_id=validated_data['external_id']).exists():
             raise serializers.ValidationError("An exam with this external_id already exists.")
+        
+        # Set default version if not provided
+        if 'version' not in validated_data or not validated_data['version']:
+            validated_data['version'] = 'main'
         
         return super().create(validated_data)
 

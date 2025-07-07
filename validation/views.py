@@ -982,24 +982,22 @@ def stream_exam_image(request, exam_id, run_id):
         
         # Construct the file path in the dataset
         file_path = f"validation/{exam.external_id}.jpg"
-        
+        print("Attempting to download file:", file_path)
         # Download the image from Hugging Face
         repo_id = "sieben-ips/l3net"
         
-        # Use hf_hub_download to get the file with a specific cache directory
-        import tempfile
-        cache_dir = tempfile.gettempdir()
+        # Use hf_hub_download to get the file
         downloaded_file = hf_hub_download(
             repo_id=repo_id,
             filename=file_path,
             token=hf_token,
-            repo_type="dataset",
-            cache_dir=cache_dir
+            repo_type="dataset"
         )
-        
+        print("File downloaded successfully:", downloaded_file)
         # Read and stream the original image without modifications
         with open(downloaded_file, 'rb') as f:
             image_data = f.read()
+        print("Image data read successfully, size:", len(image_data))
         
         response = HttpResponse(image_data, content_type='image/jpeg')
         response['Cache-Control'] = 'max-age=3600'  # Cache for 1 hour

@@ -16,7 +16,7 @@ DATABASES = {
         'NAME': 'l3net_db',
         'USER': 'l3net_admin',
         'PASSWORD': 'l3net_pass123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'HOST': os.getenv("DB_HOST", "localhost"),  # ← should default to 'db'
+        'PORT': os.getenv("DB_PORT", 5432),
     }
 }

@@ -3,6 +3,8 @@ services:
     build: .
     container_name: l3net_web
     restart: always
+    mem_limit: 1g
+    cpus: 1.0
     ports:
       - "1486:8000"
     environment:
@@ -28,10 +30,13 @@ services:
     image: postgres:17
     container_name: l3net_db_local
     restart: always
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       POSTGRES_DB: l3net_db
       POSTGRES_USER: l3net_admin
       POSTGRES_PASSWORD: l3net_pass123
+      PGOPTIONS: "-c work_mem=2MB -c shared_buffers=128MB"
     ports:
       - "5432:5432"
     volumes:

@@ -62,7 +62,9 @@
         </div>
         <div class="ml-4">
           <p class="text-sm font-medium text-blue-600 dark:text-blue-400 transition-colors">Total Runs</p>
-          <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 transition-colors">{{ total_runs }}</p>
+          <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 transition-colors" id="total-runs-count">
+            <span class="loading-spinner">Loading...</span>
+          </p>
         </div>
       </div>
     </div>
@@ -76,7 +78,9 @@
         </div>
         <div class="ml-4">
           <p class="text-sm font-medium text-green-600 dark:text-green-400 transition-colors">Assigned Runs</p>
-          <p class="text-2xl font-bold text-green-900 dark:text-green-100 transition-colors">{{ assigned_runs }}</p>
+          <p class="text-2xl font-bold text-green-900 dark:text-green-100 transition-colors" id="assigned-runs-count">
+            <span class="loading-spinner">Loading...</span>
+          </p>
         </div>
       </div>
     </div>
@@ -90,7 +94,9 @@
         </div>
         <div class="ml-4">
           <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400 transition-colors">Unassigned Runs</p>
-          <p class="text-2xl font-bold text-yellow-900 dark:text-yellow-100 transition-colors">{{ unassigned_runs }}</p>
+          <p class="text-2xl font-bold text-yellow-900 dark:text-yellow-100 transition-colors" id="unassigned-runs-count">
+            <span class="loading-spinner">Loading...</span>
+          </p>
         </div>
       </div>
     </div>
@@ -126,14 +132,14 @@
                   <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">
                     Created: {{ run.run_date|date:"M d, Y" }}
                   </span>
-                  <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">
-                    {{ run.exam_count }} exam{{ run.exam_count|pluralize }}
+                  <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors run-detail" data-run-id="{{ run.id }}" data-type="exam_count">
+                    <span class="loading-spinner">Loading...</span> exams
                   </span>
-                  <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">
-                    {{ run.assignment_count }} assignment{{ run.assignment_count|pluralize }}
+                  <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors run-detail" data-run-id="{{ run.id }}" data-type="assignment_count">
+                    <span class="loading-spinner">Loading...</span> assignments
                   </span>
-                  <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">
-                    {{ run.prediction_count }} prediction{{ run.prediction_count|pluralize }}
+                  <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors run-detail" data-run-id="{{ run.id }}" data-type="prediction_count">
+                    <span class="loading-spinner">Loading...</span> predictions
                   </span>
                   <!-- Status Display and Change -->
                   <div class="flex items-center space-x-2">
@@ -331,6 +337,108 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Lazy Loading Implementation
+    function loadStatistics() {
+        fetch('{% url "validation:ajax_run_statistics" %}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error loading statistics:', data.error);
+                document.getElementById('total-runs-count').innerHTML = 'Error';
+                document.getElementById('assigned-runs-count').innerHTML = 'Error';
+                document.getElementById('unassigned-runs-count').innerHTML = 'Error';
+            } else {
+                document.getElementById('total-runs-count').textContent = data.total_runs;
+                document.getElementById('assigned-runs-count').textContent = data.assigned_runs;
+                document.getElementById('unassigned-runs-count').textContent = data.unassigned_runs;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading statistics:', error);
+            document.getElementById('total-runs-count').innerHTML = 'Error';
+            document.getElementById('assigned-runs-count').innerHTML = 'Error';
+            document.getElementById('unassigned-runs-count').innerHTML = 'Error';
+        });
+    }
+
+    function loadRunDetails() {
+        // Get all run IDs from the current page
+        const runElements = document.querySelectorAll('.run-detail');
+        const runIds = [...new Set(Array.from(runElements).map(el => el.dataset.runId))];
+        
+        if (runIds.length === 0) return;
+
+        fetch('{% url "validation:ajax_bulk_run_details" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ run_ids: runIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error loading run details:', data.error);
+                // Show error for all run details
+                runElements.forEach(el => {
+                    el.innerHTML = 'Error loading';
+                });
+            } else {
+                // Update each run detail element
+                runElements.forEach(el => {
+                    const runId = el.dataset.runId;
+                    const type = el.dataset.type;
+                    const runData = data.results[runId];
+                    
+                    if (runData && runData[type] !== undefined) {
+                        const count = runData[type];
+                        const itemName = type.replace('_count', '');
+                        const pluralSuffix = count === 1 ? '' : 's';
+                        el.textContent = `${count} ${itemName}${pluralSuffix}`;
+                    } else {
+                        el.textContent = 'N/A';
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading run details:', error);
+            runElements.forEach(el => {
+                el.innerHTML = 'Error';
+            });
+        });
+    }
+
+    // Add CSS for loading animation
+    const style = document.createElement('style');
+    style.textContent = `
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Load data when page is ready
+    loadStatistics();
+    loadRunDetails();
 });
 </script>
 

@@ -30,4 +30,9 @@ urlpatterns = [
     path('admin/run/<int:pk>/delete/', views.AdminRunDeleteView.as_view(), name='admin_run_delete'),
     path('admin/run/<int:pk>/assign/', views.AdminRunAssignView.as_view(), name='admin_run_assign'),
     path('admin/run/assign/', views.AdminRunAssignmentView.as_view(), name='admin_run_assignment'),
+    
+    # AJAX endpoints for lazy loading
+    path('ajax/run-statistics/', views.get_run_statistics, name='ajax_run_statistics'),
+    path('ajax/run-details/<int:run_id>/', views.get_run_details, name='ajax_run_details'),
+    path('ajax/bulk-run-details/', views.bulk_get_run_details, name='ajax_bulk_run_details'),
 ]

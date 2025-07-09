@@ -826,23 +826,15 @@ class AdminExamDeleteView(DeleteView):
 
 @method_decorator(staff_member_required, name='dispatch')
 class AdminRunListView(ListView):
-    """Admin-only view for managing all runs."""
+    """Admin-only view for managing all runs with lazy loading."""
     model = Run
     template_name = 'validation/admin_run_list.html'
     context_object_name = 'runs'
     paginate_by = 20
     
     def get_queryset(self):
-        queryset = Run.objects.prefetch_related(
-            'exams',
-            'assignments__user',
-            'predicted_severities',
-            'predicted_vertebrae'
-        ).annotate(
-            exam_count=Count('exams', distinct=True),
-            assignment_count=Count('assignments', distinct=True),
-            prediction_count=Count('predicted_severities', distinct=True) + Count('predicted_vertebrae', distinct=True)
-        ).order_by('-run_date')
+        # Use minimal query - only get basic run data
+        queryset = Run.objects.select_related().order_by('-run_date')
         
         # Filter by search query if provided
         search = self.request.GET.get('search')
@@ -858,10 +850,8 @@ class AdminRunListView(ListView):
         context = super().get_context_data(**kwargs)
         context['search_query'] = self.request.GET.get('search', '')
         
-        # Get statistics
-        context['total_runs'] = Run.objects.count()
-        context['assigned_runs'] = Run.objects.filter(assignments__isnull=False).distinct().count()
-        context['unassigned_runs'] = Run.objects.filter(assignments__isnull=True).count()
+        # Don't calculate statistics upfront - use lazy loading via AJAX
+        context['lazy_loading'] = True
         
         return context
 
@@ -1278,5 +1268,159 @@ class AdminExamListView(ListView):
         context['exams_without_runs'] = Exam.objects.filter(runs__isnull=True).count()
         
         return context
+
+# ============ AJAX ENDPOINTS FOR LAZY LOADING ============
+
+@login_required
+@require_http_methods(["GET"])
+def get_run_statistics(request):
+    """AJAX endpoint to get run statistics for the admin dashboard."""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Admin access required'}, status=403)
+    
+    try:
+        from django.core.cache import cache
+        
+        # Try to get from cache first (cache for 5 minutes)
+        cache_key = 'run_statistics'
+        stats = cache.get(cache_key)
+        
+        if stats is None:
+            # Calculate statistics
+            total_runs = Run.objects.count()
+            assigned_runs = Run.objects.filter(assignments__isnull=False).distinct().count()
+            unassigned_runs = Run.objects.filter(assignments__isnull=True).count()
+            
+            stats = {
+                'total_runs': total_runs,
+                'assigned_runs': assigned_runs,
+                'unassigned_runs': unassigned_runs
+            }
+            
+            # Cache for 5 minutes
+            cache.set(cache_key, stats, 300)
+        else:
+            print("Cache hit for run statistics")
+        
+        return JsonResponse(stats)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_run_details(request, run_id):
+    """AJAX endpoint to get detailed information for a specific run."""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Admin access required'}, status=403)
+    
+    try:
+        from django.core.cache import cache
+        
+        # Try to get from cache first (cache for 2 minutes)
+        cache_key = f'run_details_{run_id}'
+        details = cache.get(cache_key)
+        
+        if details is None:
+            run = get_object_or_404(Run, id=run_id)
+            
+            # Get counts efficiently
+            exam_count = run.exams.count()
+            assignment_count = run.assignments.count()
+            severity_count = PredSeverity.objects.filter(run_id=run).count()
+            vertebra_count = PredVertebra.objects.filter(run_id=run).count()
+            prediction_count = severity_count + vertebra_count
+            
+            details = {
+                'exam_count': exam_count,
+                'assignment_count': assignment_count,
+                'prediction_count': prediction_count,
+                'status': run.status
+            }
+            
+            # Cache for 2 minutes
+            cache.set(cache_key, details, 120)
+        else:
+            print(f"Cache hit for run details {run_id}")
+        
+        return JsonResponse(details)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@staff_member_required
+def bulk_get_run_details(request):
+    """AJAX endpoint to get details for multiple runs at once."""
+    try:
+        data = json.loads(request.body)
+        run_ids = data.get('run_ids', [])
+        
+        if not run_ids:
+            return JsonResponse({'error': 'No run IDs provided'}, status=400)
+        
+        # Limit to 50 runs at once to prevent performance issues
+        if len(run_ids) > 50:
+            return JsonResponse({'error': 'Too many run IDs (max 50)'}, status=400)
+        
+        from django.core.cache import cache
+        
+        results = {}
+        uncached_runs = []
+        
+        # Check cache first
+        for run_id in run_ids:
+            cache_key = f'run_details_{run_id}'
+            cached_details = cache.get(cache_key)
+            if cached_details:
+                results[str(run_id)] = cached_details
+            else:
+                uncached_runs.append(run_id)
+        
+        # Get uncached runs efficiently
+        if uncached_runs:
+            runs = Run.objects.filter(id__in=uncached_runs).prefetch_related(
+                'exams', 'assignments'
+            )
+            
+            # Get prediction counts efficiently
+            severity_counts = PredSeverity.objects.filter(
+                run_id__in=uncached_runs
+            ).values('run_id').annotate(count=Count('id'))
+            
+            vertebra_counts = PredVertebra.objects.filter(
+                run_id__in=uncached_runs
+            ).values('run_id').annotate(count=Count('id'))
+            
+            # Create lookup dictionaries
+            severity_lookup = {item['run_id']: item['count'] for item in severity_counts}
+            vertebra_lookup = {item['run_id']: item['count'] for item in vertebra_counts}
+            
+            for run in runs:
+                severity_count = severity_lookup.get(run.id, 0)
+                vertebra_count = vertebra_lookup.get(run.id, 0)
+                
+                details = {
+                    'exam_count': run.exams.count(),
+                    'assignment_count': run.assignments.count(),
+                    'prediction_count': severity_count + vertebra_count,
+                    'status': run.status
+                }
+                
+                # Cache for 2 minutes
+                cache_key = f'run_details_{run.id}'
+                cache.set(cache_key, details, 120)
+                
+                results[str(run.id)] = details
+        
+        return JsonResponse({'results': results})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 

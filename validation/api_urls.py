@@ -15,6 +15,7 @@ urlpatterns = [
     
     # Exam endpoints
     path('exams/', api_views.ExamListCreateView.as_view(), name='exam_list_create'),
+    path('exams/all/', api_views.list_all_exams, name='list_all_exams'),
     path('exams/<int:pk>/', api_views.ExamDetailView.as_view(), name='exam_detail'),
     path('exams/external/<str:external_id>/', api_views.get_exam_by_external_id, name='get_exam_by_external_id'),
     

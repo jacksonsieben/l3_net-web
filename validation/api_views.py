@@ -124,7 +124,9 @@ class ExamListCreateView(generics.ListCreateAPIView):
     """
     List all exams or create a new exam.
     
-    GET /api/exams/ - List all exams
+    GET /api/exams/ - List all exams (paginated by default, 20 per page)
+    GET /api/exams/?page=2 - Get page 2
+    GET /api/exams/?page=2&page_size=10 - Get page 2 with 10 items per page
     POST /api/exams/ - Create a new exam
     """
     queryset = Exam.objects.all().order_by('-created_at')
@@ -134,6 +136,79 @@ class ExamListCreateView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return ExamCreateSerializer
         return ExamSerializer
+    
+    def list(self, request, *args, **kwargs):
+        """Custom list method with pagination support."""
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+        
+        # Get query parameters
+        page_number = request.GET.get('page', 1)
+
+        page_size = request.GET.get('page_size', 20)
+        
+        # Validate page_size (max 100, min 1)
+        try:
+            page_size = int(page_size)
+            page_size = max(1, min(page_size, 100))
+        except (ValueError, TypeError):
+            page_size = 20
+        
+        # Get all exams
+        queryset = self.get_queryset()
+        
+        # Create paginator
+        paginator = Paginator(queryset, page_size)
+
+        if int(page_number) > paginator.num_pages:
+            return Response({
+                'success': False,
+                'message': 'Page number exceeds total pages.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            page_obj = paginator.page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.page(1)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+        
+        # Serialize the data
+        serializer = self.get_serializer(page_obj.object_list, many=True)
+        
+        # Return paginated response
+        return Response({
+            'count': paginator.count,
+            'total_pages': paginator.num_pages,
+            'current_page': page_obj.number,
+            'page_size': page_size,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'next_page': page_obj.next_page_number() if page_obj.has_next() else None,
+            'previous_page': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'results': serializer.data
+        })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def list_all_exams(request):
+    """
+    Get all exams without pagination.
+    
+    GET /api/exams/all/ - Get all exams (no pagination)
+    """
+    try:
+        exams = Exam.objects.all().order_by('-created_at')
+        serializer = ExamSerializer(exams, many=True)
+        return Response({
+            'count': len(serializer.data),
+            'results': serializer.data
+        })
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Error retrieving exams: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):

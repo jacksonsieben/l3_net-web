@@ -120,9 +120,15 @@ Content-Type: application/json
 
 {
     "external_id": "EXAM-2025-001",
-    "image_path": "https://example.com/scan.png"
+    "image_path": "https://example.com/scan.png",
+    "version": "main"
 }
 ```
+
+**Fields:**
+- `external_id` (required): Unique identifier for the exam
+- `image_path` (required): URL or path to the medical image  
+- `version` (optional): Dataset version from Hugging Face repository (defaults to "main")
 
 **Response:**
 ```json
@@ -130,37 +136,95 @@ Content-Type: application/json
     "id": 1,
     "external_id": "EXAM-2025-001",
     "image_path": "https://example.com/scan.png",
+    "version": "main",
     "created_at": "2025-06-11T10:30:00Z"
 }
 ```
 
-#### 5. List All Exams
+#### 5. List Exams (Paginated)
 
-Get a paginated list of all exams in the system.
+Get a paginated list of exams in the system.
 
 ```http
 GET /api/exams/
 Authorization: Token your_token_here
 ```
 
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `page_size` (optional): Number of items per page (default: 20, max: 100)
+
+**Examples:**
+```bash
+# Get first page (default 20 items)
+curl -X GET http://localhost:8000/api/exams/ \
+  -H "Authorization: Token your_token_here"
+
+# Get page 2 with 10 items per page
+curl -X GET "http://localhost:8000/api/exams/?page=2&page_size=10" \
+  -H "Authorization: Token your_token_here"
+
+# Get page 3 with default page size
+curl -X GET "http://localhost:8000/api/exams/?page=3" \
+  -H "Authorization: Token your_token_here"
+```
+
 **Response:**
 ```json
 {
-    "count": 10,
-    "next": null,
-    "previous": null,
+    "count": 150,
+    "total_pages": 8,
+    "current_page": 2,
+    "page_size": 20,
+    "has_next": true,
+    "has_previous": true,
+    "next_page": 3,
+    "previous_page": 1,
     "results": [
         {
             "id": 1,
             "external_id": "EXAM-2025-001",
             "image_path": "https://example.com/scan.png",
+            "version": "main",
             "created_at": "2025-06-11T10:30:00Z"
         }
     ]
 }
 ```
 
-#### 6. Get Exam Details
+#### 6. List All Exams (No Pagination)
+
+Get all exams in the system without pagination.
+
+```http
+GET /api/exams/all/
+Authorization: Token your_token_here
+```
+
+**Response:**
+```json
+{
+    "count": 150,
+    "results": [
+        {
+            "id": 1,
+            "external_id": "EXAM-2025-001",
+            "image_path": "https://example.com/scan.png",
+            "version": "main",
+            "created_at": "2025-06-11T10:30:00Z"
+        },
+        {
+            "id": 2,
+            "external_id": "EXAM-2025-002",
+            "image_path": "https://example.com/scan2.png",
+            "version": "v1.1",
+            "created_at": "2025-06-11T11:30:00Z"
+        }
+    ]
+}
+```
+
+#### 7. Get Exam Details
 
 Retrieve details of a specific exam by ID.
 
@@ -169,7 +233,7 @@ GET /api/exams/{id}/
 Authorization: Token your_token_here
 ```
 
-#### 7. Get Exam by External ID
+#### 8. Get Exam by External ID
 
 Retrieve details of a specific exam by its external_id.
 
@@ -190,11 +254,12 @@ curl -X GET http://localhost:8000/api/exams/external/EXAM-2025-001/ \
     "id": 1,
     "external_id": "EXAM-2025-001",
     "image_path": "https://example.com/scan.png",
+    "version": "main",
     "created_at": "2025-06-11T10:30:00Z"
 }
 ```
 
-#### 8. Update Exam
+#### 9. Update Exam
 
 Update an existing exam.
 
@@ -205,11 +270,12 @@ Content-Type: application/json
 
 {
     "external_id": "EXAM-2025-001-UPDATED",
-    "image_path": "https://example.com/updated-scan.png"
+    "image_path": "https://example.com/updated-scan.png",
+    "version": "v1.1"
 }
 ```
 
-#### 9. Delete Exam
+#### 10. Delete Exam
 
 Delete an exam from the system.
 
@@ -220,7 +286,7 @@ Authorization: Token your_token_here
 
 ### Model Version Management
 
-#### 10. Create Model Version
+#### 11. Create Model Version
 
 Create a new model version for predictions.
 
@@ -257,7 +323,7 @@ Content-Type: application/json
 }
 ```
 
-#### 11. List Model Versions
+#### 12. List Model Versions
 
 Get all model versions.
 
@@ -266,7 +332,7 @@ GET /api/model-versions/
 Authorization: Token your_token_here
 ```
 
-#### 12. Find Model Version by Version and Type
+#### 13. Find Model Version by Version and Type
 
 Find a specific model version by its version number and model type.
 
@@ -304,7 +370,7 @@ Authorization: Token your_token_here
 
 ### Run Management
 
-#### 13. Create Simple Run
+#### 14. Create Simple Run
 
 Create a basic run and assign exams to it.
 
@@ -331,7 +397,7 @@ Content-Type: application/json
 }
 ```
 
-#### 14. List All Runs
+#### 15. List All Runs
 
 Get all runs in the system.
 
@@ -340,7 +406,7 @@ GET /api/runs/
 Authorization: Token your_token_here
 ```
 
-#### 15. Get Run Details
+#### 16. Get Run Details
 
 Get details of a specific run.
 
@@ -349,7 +415,7 @@ GET /api/runs/{id}/
 Authorization: Token your_token_here
 ```
 
-#### 16. Create Run with Predictions (Complete)
+#### 17. Create Run with Predictions (Complete)
 
 Create a complete run with exams and all predictions in one API call.
 
@@ -435,7 +501,7 @@ Content-Type: application/json
 }
 ```
 
-#### 17. Add Predictions to Existing Run
+#### 18. Add Predictions to Existing Run
 
 Add more predictions to an existing run.
 
@@ -489,7 +555,7 @@ Content-Type: application/json
 }
 ```
 
-#### 18. Get Run Predictions
+#### 19. Get Run Predictions
 
 Retrieve all predictions for a specific run.
 
@@ -539,7 +605,7 @@ Authorization: Token your_token_here
 
 ### User Assignment Management
 
-#### 19. Assign Run to User
+#### 20. Assign Run to User
 
 Assign a run to a user for validation.
 
@@ -579,6 +645,7 @@ Content-Type: application/json
 #### Exam
 - `external_id`: Unique identifier for the exam (string, required)
 - `image_path`: URL or path to the medical image (string, required)
+- `version`: Dataset version from Hugging Face repository (string, optional, defaults to "main")
 
 #### Run
 - `name`: Human-readable name for the run (string, required)
@@ -707,16 +774,18 @@ curl -X POST http://localhost:8000/api/exams/ \
   -H "Content-Type: application/json" \
   -d '{
     "external_id": "EXAM-API-001",
-    "image_path": "https://example.com/scan1.jpg"
+    "image_path": "https://example.com/scan1.jpg",
+    "version": "main"
   }'
 
-# Create second exam  
+# Create second exam with specific version
 curl -X POST http://localhost:8000/api/exams/ \
   -H "Authorization: Token e408ce8a4f67e5d3446bef0cb02fb189bf23d68e" \
   -H "Content-Type: application/json" \
   -d '{
     "external_id": "EXAM-API-002", 
-    "image_path": "https://example.com/scan2.jpg"
+    "image_path": "https://example.com/scan2.jpg",
+    "version": "v1.1"
   }'
 ```
 
@@ -793,9 +862,14 @@ curl -X POST http://localhost:8000/api/assign-run/ \
 
 - **Authentication**: Store tokens securely and refresh when they expire
 - **Bulk Operations**: Use the `runs/with-predictions/` endpoint for creating runs with many predictions
+- **Pagination**: 
+  - Use `/api/exams/` for paginated results (default 20 items per page, max 100)
+  - Use `/api/exams/all/` only when you need all exams at once (use with caution for large datasets)
+  - Control page size with `page_size` parameter to balance performance and memory usage
 - **Error Handling**: Always check response status codes and handle errors appropriately
 - **Data Validation**: Ensure coordinates are normalized (0.0-1.0) before sending
 - **Testing**: Use the `/api/status/` endpoint to verify API availability
+- **Version Validation**: The API validates exam versions against the Hugging Face repository
 
 ## Support
 

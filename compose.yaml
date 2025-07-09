@@ -33,6 +33,7 @@ services:
       POSTGRES_DB: ${DB_NAME:-l3net_db}
       POSTGRES_USER: ${DB_USER:-l3net_admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGOPTIONS: "-c work_mem=2MB -c shared_buffers=128MB"
     ports:
       - "5432:5432"
     volumes:

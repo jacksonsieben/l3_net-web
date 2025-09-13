@@ -62,6 +62,9 @@
             width: auto;
             height: auto;
             object-fit: contain;
+            image-rendering: auto;
+            image-rendering: crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .annotation-controls {
@@ -475,6 +478,23 @@
                         });
                     }
 
+                    // Ensure proper image loading before rendering boxes
+                    function ensureImageLoaded() {
+                        if (!annotationImage) return;
+
+                        if (annotationImage.complete && annotationImage.naturalWidth > 0) {
+                            // Image is already loaded, safe to render
+                            setTimeout(() => renderBoxes(selectedPredictionIndex), 100);
+                        } else {
+                            // Wait for image to load
+                            annotationImage.addEventListener('load', function onImageLoad() {
+                                // Remove event listener to prevent multiple calls
+                                annotationImage.removeEventListener('load', onImageLoad);
+                                setTimeout(() => renderBoxes(selectedPredictionIndex), 100);
+                            });
+                        }
+                    }
+
                     function fitImageToContainer() {
                         if (!annotationImage) return;
 
@@ -482,8 +502,16 @@
                         annotationImage.style.transform = 'none';
                         scale = 1;
 
-                        // Re-render boxes after a short delay to allow CSS to apply, maintaining selected severity prediction
-                        setTimeout(() => renderBoxes(selectedPredictionIndex), 50);
+                        // Wait for image to be fully loaded and rendered before calculating boxes
+                        if (annotationImage.complete && annotationImage.naturalWidth > 0) {
+                            // Re-render boxes after a delay to ensure CSS is applied
+                            setTimeout(() => renderBoxes(selectedPredictionIndex), 100);
+                        } else {
+                            // If image not loaded, wait for load event
+                            annotationImage.addEventListener('load', function() {
+                                setTimeout(() => renderBoxes(selectedPredictionIndex), 100);
+                            });
+                        }
                     }
 
                     function renderBoxes(selectedSeverityIndex = -1) {
@@ -494,9 +522,40 @@
                             return; // Image not loaded yet
                         }
 
+                        // Wait for image to be fully rendered
+                        if (!annotationImage.complete) {
+                            annotationImage.addEventListener('load', () => {
+                                setTimeout(() => renderBoxes(selectedSeverityIndex), 100);
+                            });
+                            return;
+                        }
+
                         // Get the image's bounding rectangle
                         const imageRect = annotationImage.getBoundingClientRect();
                         const containerRect = imageContainer.getBoundingClientRect();
+
+                        // Ensure we have valid dimensions
+                        if (imageRect.width === 0 || imageRect.height === 0) {
+                            console.warn('Image dimensions are zero, retrying...', { 
+                                imageRect, 
+                                naturalWidth: annotationImage.naturalWidth, 
+                                naturalHeight: annotationImage.naturalHeight,
+                                complete: annotationImage.complete
+                            });
+                            setTimeout(() => renderBoxes(selectedSeverityIndex), 100);
+                            return;
+                        }
+
+                        // Debug logging for production troubleshooting
+                        console.debug('Rendering boxes with dimensions:', {
+                            naturalWidth: annotationImage.naturalWidth,
+                            naturalHeight: annotationImage.naturalHeight,
+                            displayWidth: imageRect.width,
+                            displayHeight: imageRect.height,
+                            imageLeft: imageRect.left - containerRect.left,
+                            imageTop: imageRect.top - containerRect.top,
+                            scale: scale
+                        });
 
                         // Calculate the actual displayed size of the image (considering CSS scaling and transform)
                         const currentImageWidth = imageRect.width;
@@ -505,6 +564,11 @@
                         // Get the position of the image relative to the container
                         const imageLeft = imageRect.left - containerRect.left;
                         const imageTop = imageRect.top - containerRect.top;
+
+                        // Improved coordinate detection: check against image natural dimensions
+                        function isNormalizedCoordinate(coord, maxDimension) {
+                            return coord <= 1.0 && coord >= 0.0 && maxDimension > 1;
+                        }
 
                         // Render selected severity prediction if one is selected
                         if (selectedSeverityIndex >= 0 && selectedSeverityIndex < severityPredictions.length) {
@@ -518,11 +582,16 @@
                             const severityClass = prediction.severity_name.toLowerCase().replace('/', '-').replace(' ', '-');
                             box.classList.add(`severity-${severityClass}`);
 
-                            // Calculate bounding box position and size
+                            // Calculate bounding box position and size with improved coordinate detection
                             let boxLeft, boxTop, boxWidth, boxHeight;
 
-                            if (prediction.bounding_box.x1 <= 1 && prediction.bounding_box.x2 <= 1 &&
-                                prediction.bounding_box.y1 <= 1 && prediction.bounding_box.y2 <= 1) {
+                            // Check if coordinates are normalized based on the natural image dimensions
+                            const isNormalized = isNormalizedCoordinate(prediction.bounding_box.x1, annotationImage.naturalWidth) &&
+                                                isNormalizedCoordinate(prediction.bounding_box.x2, annotationImage.naturalWidth) &&
+                                                isNormalizedCoordinate(prediction.bounding_box.y1, annotationImage.naturalHeight) &&
+                                                isNormalizedCoordinate(prediction.bounding_box.y2, annotationImage.naturalHeight);
+
+                            if (isNormalized) {
                                 // Coordinates are normalized (0-1)
                                 boxLeft = prediction.bounding_box.x1 * currentImageWidth;
                                 boxTop = prediction.bounding_box.y1 * currentImageHeight;
@@ -569,11 +638,16 @@
                                 const box = document.createElement('div');
                                 box.className = 'bounding-box vertebra-box';
 
-                                // Calculate bounding box position and size
+                                // Calculate bounding box position and size with improved coordinate detection
                                 let boxLeft, boxTop, boxWidth, boxHeight;
 
-                                if (prediction.polygon.x1 <= 1 && prediction.polygon.x2 <= 1 &&
-                                    prediction.polygon.y1 <= 1 && prediction.polygon.y2 <= 1) {
+                                // Check if coordinates are normalized
+                                const isNormalized = isNormalizedCoordinate(prediction.polygon.x1, annotationImage.naturalWidth) &&
+                                                    isNormalizedCoordinate(prediction.polygon.x2, annotationImage.naturalWidth) &&
+                                                    isNormalizedCoordinate(prediction.polygon.y1, annotationImage.naturalHeight) &&
+                                                    isNormalizedCoordinate(prediction.polygon.y2, annotationImage.naturalHeight);
+
+                                if (isNormalized) {
                                     // Coordinates are normalized (0-1)
                                     boxLeft = prediction.polygon.x1 * currentImageWidth;
                                     boxTop = prediction.polygon.y1 * currentImageHeight;
@@ -707,7 +781,8 @@
                             annotationImage.style.transform = `scale(${scale})`;
                             annotationImage.style.transformOrigin = 'center center';
                             // Re-render boxes to match new scale, maintaining selected severity prediction
-                            setTimeout(() => renderBoxes(selectedPredictionIndex), 10);
+                            // Use a longer delay to ensure the transform is applied
+                            setTimeout(() => renderBoxes(selectedPredictionIndex), 150);
                         }
                     }
 
@@ -727,6 +802,20 @@
                             renderBoxes(selectedPredictionIndex);
                         });
                     }
+
+                    // Handle window resize to recalculate bounding boxes
+                    let resizeTimeout;
+                    window.addEventListener('resize', () => {
+                        clearTimeout(resizeTimeout);
+                        resizeTimeout = setTimeout(() => {
+                            if (annotationImage && annotationImage.complete) {
+                                renderBoxes(selectedPredictionIndex);
+                            }
+                        }, 250);
+                    });
+
+                    // Ensure initial image load and render
+                    ensureImageLoaded();
 
                     // Prediction list item click
                     if (predictionList) {

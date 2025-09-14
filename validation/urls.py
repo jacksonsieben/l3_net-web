@@ -35,4 +35,10 @@ urlpatterns = [
     path('ajax/run-statistics/', views.get_run_statistics, name='ajax_run_statistics'),
     path('ajax/run-details/<int:run_id>/', views.get_run_details, name='ajax_run_details'),
     path('ajax/bulk-run-details/', views.bulk_get_run_details, name='ajax_bulk_run_details'),
+    
+    # Analytics and reporting URLs (Admin only)
+    path('analytics/', views.analytics_dashboard, name='analytics_dashboard'),
+    path('analytics/run/<int:run_id>/', views.run_analytics_detail, name='run_analytics_detail'),
+    path('export/csv/', views.export_validation_results_csv, name='export_validation_csv'),
+    path('export/csv/<int:run_id>/', views.export_validation_results_csv, name='export_validation_csv'),
 ]

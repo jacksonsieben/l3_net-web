@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}
+    Run Analytics: {{ analytics.run.name }} - L3Net Validation
+{% endblock title %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .metric-card {
+        @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors;
+    }
+    .kappa-score {
+        @apply px-2 py-1 rounded text-sm font-medium;
+    }
+    .kappa-excellent { 
+        @apply bg-green-100 text-green-800;
+        background-color: rgb(220 252 231) !important;
+        color: rgb(22 101 52) !important;
+    }
+    .dark .kappa-excellent {
+        background-color: rgb(20 83 45) !important;
+        color: rgb(240 253 244) !important;
+    }
+    .kappa-good { 
+        @apply bg-blue-100 text-blue-800;
+        background-color: rgb(219 234 254) !important;
+        color: rgb(30 64 175) !important;
+    }
+    .dark .kappa-good {
+        background-color: rgb(30 58 138) !important;
+        color: rgb(239 246 255) !important;
+    }
+    .kappa-moderate { 
+        @apply bg-yellow-100 text-yellow-800;
+        background-color: rgb(254 249 195) !important;
+        color: rgb(133 77 14) !important;
+    }
+    .dark .kappa-moderate {
+        background-color: rgb(133 77 14) !important;
+        color: rgb(254 252 232) !important;
+    }
+    .kappa-fair { 
+        @apply bg-orange-100 text-orange-800;
+        background-color: rgb(255 237 213) !important;
+        color: rgb(154 52 18) !important;
+    }
+    .dark .kappa-fair {
+        background-color: rgb(154 52 18) !important;
+        color: rgb(255 251 235) !important;
+    }
+    .kappa-poor { 
+        @apply bg-red-100 text-red-800;
+        background-color: rgb(254 226 226) !important;
+        color: rgb(153 27 27) !important;
+    }
+    .dark .kappa-poor {
+        background-color: rgb(153 27 27) !important;
+        color: rgb(254 242 242) !important;
+    }
+</style>
+{% endblock extra_head %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400">Run Analytics: {{ analytics.run.name }}</h1>
+            <p class="text-gray-600 dark:text-gray-400">{{ analytics.run.run_date|date:"F j, Y H:i" }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'validation:export_validation_csv' analytics.run.id %}" 
+               class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded transition">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Export CSV
+            </a>
+            <a href="{% url 'validation:analytics_dashboard' %}" 
+               class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded transition">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="metric-card">
+            <div class="flex items-center">
+                <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Validations</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ analytics.total_validations }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="flex items-center">
+                <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Overall Accuracy</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ analytics.overall_accuracy|floatformat:1 }}%</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="flex items-center">
+                <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Number of Experts</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ analytics.experts|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="flex items-center">
+                <div class="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                    <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Severity Classes</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ severity_choices|length }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Expert Performance Table -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-colors">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Expert Performance</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Expert</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Validations</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% if analytics.experts %}
+                            {% for expert_email, expert_stats in analytics.experts.items %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ expert_email }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                    {{ expert_stats.total_validations }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if expert_stats.accuracy >= 80 %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
+                                            {{ expert_stats.accuracy|floatformat:1 }}%
+                                        </span>
+                                    {% elif expert_stats.accuracy >= 60 %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
+                                            {{ expert_stats.accuracy|floatformat:1 }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">
+                                            {{ expert_stats.accuracy|floatformat:1 }}%
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                    No expert data available
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Inter-rater Agreement (Cohen's Kappa) -->
+        {% if analytics.kappa_matrix %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-colors">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Inter-rater Agreement (Cohen's κ)</h2>
+            </div>
+            <div class="p-6 overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider pb-2"></th>
+                            {% if analytics.kappa_matrix %}
+                                {% for expert1_email in analytics.kappa_matrix.keys %}
+                                    <th class="text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider pb-2 px-2">
+                                        {{ expert1_email|truncatechars:15 }}
+                                    </th>
+                                {% endfor %}
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if analytics.kappa_matrix %}
+                            {% for expert1_email, expert1_kappas in analytics.kappa_matrix.items %}
+                            <tr>
+                                <td class="text-xs font-medium text-gray-700 dark:text-gray-300 py-2 pr-4">
+                                    {{ expert1_email|truncatechars:15 }}
+                                </td>
+                                {% for expert2_email, kappa in expert1_kappas.items %}
+                                <td class="text-center py-2 px-2">
+                                    {% if kappa == 'N/A' or kappa == 'Insufficient data' %}
+                                        <span class="text-xs text-gray-500">-</span>
+                                    {% elif kappa == 1.0 %}
+                                        <span class="text-xs text-gray-500">-</span>
+                                    {% else %}
+                                        {% if kappa >= 0.8 %}
+                                            <span class="kappa-score kappa-excellent text-xs">{{ kappa }}</span>
+                                        {% elif kappa >= 0.6 %}
+                                            <span class="kappa-score kappa-good text-xs">{{ kappa }}</span>
+                                        {% elif kappa >= 0.4 %}
+                                            <span class="kappa-score kappa-moderate text-xs">{{ kappa }}</span>
+                                        {% elif kappa >= 0.2 %}
+                                            <span class="kappa-score kappa-fair text-xs">{{ kappa }}</span>
+                                        {% else %}
+                                            <span class="kappa-score kappa-poor text-xs">{{ kappa }}</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="100%" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                    No inter-rater agreement data available
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Severity Breakdown Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        <!-- Original vs Validated Severity Distribution -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-colors">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Severity Distribution</h3>
+            <div class="relative h-64">
+                <canvas id="severityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Expert Severity Counts -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-colors">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Expert Severity Classifications</h3>
+            </div>
+            <div class="p-6">
+                {% if analytics.experts %}
+                    {% for expert_email, expert_stats in analytics.experts.items %}
+                    <div class="mb-4 last:mb-0">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ expert_email }}</h4>
+                        <div class="space-y-1">
+                            {% for severity, count in expert_stats.severity_counts.items %}
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">{{ severity }}</span>
+                                <span class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-900 dark:text-gray-100">{{ count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500 dark:text-gray-400 text-center">No expert data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Severity Distribution Chart
+    const ctx = document.getElementById('severityChart').getContext('2d');
+    
+    const severityBreakdown = {{ severity_breakdown_json|safe }};
+    const originalSeverities = severityBreakdown.original;
+    const validatedSeverities = severityBreakdown.validated;
+    
+    const severityLabels = [...new Set([...Object.keys(originalSeverities), ...Object.keys(validatedSeverities)])];
+    
+    const originalData = severityLabels.map(label => originalSeverities[label] || 0);
+    const validatedData = severityLabels.map(label => validatedSeverities[label] || 0);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: severityLabels,
+            datasets: [{
+                label: 'Original Predictions',
+                data: originalData,
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Expert Validations',
+                data: validatedData,
+                backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                borderColor: 'rgba(16, 185, 129, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#374151'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#374151'
+                    },
+                    grid: {
+                        color: document.documentElement.classList.contains('dark') ? '#374151' : '#E5E7EB'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#374151'
+                    },
+                    grid: {
+                        color: document.documentElement.classList.contains('dark') ? '#374151' : '#E5E7EB'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock content %}

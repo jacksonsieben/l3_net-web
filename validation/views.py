@@ -1424,3 +1424,342 @@ def bulk_get_run_details(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# Analytics Views for Admin Dashboard
+@staff_member_required
+def analytics_dashboard(request):
+    """Analytics dashboard for admins to view validation results and metrics."""
+    from sklearn.metrics import cohen_kappa_score
+    import csv
+    from collections import defaultdict
+    
+    # Get all completed runs
+    runs = Run.objects.filter(status='Completed').prefetch_related(
+        'predicted_severities__validations__user_id',
+        'assignments__user'
+    )
+    
+    analytics_data = []
+    
+    for run in runs:
+        run_data = {
+            'run': run,
+            'overall_accuracy': 0,
+            'total_validations': 0,
+            'expert_kappas': {},
+            'overall_kappa': 0,
+            'experts': set()
+        }
+        
+        # Get all validations for this run
+        validations = Validation.objects.filter(
+            pred_severity_id__run_id=run,
+            validated_at__isnull=False
+        ).select_related('user_id', 'pred_severity_id')
+        
+        if validations.exists():
+            # Calculate overall accuracy
+            correct_validations = validations.filter(is_correct=True).count()
+            total_validations = validations.count()
+            run_data['overall_accuracy'] = (correct_validations / total_validations * 100) if total_validations > 0 else 0
+            run_data['total_validations'] = total_validations
+            
+            # Group validations by expert
+            expert_validations = defaultdict(list)
+            for validation in validations:
+                expert_validations[validation.user_id].append(validation)
+                run_data['experts'].add(validation.user_id)
+            
+            # Calculate Cohen's Kappa for each expert pair
+            print(f"Number of experts for run {run.name}: {len(expert_validations)}")
+            print(f"Expert emails: {[expert.email for expert in expert_validations.keys()]}")
+            
+            if len(expert_validations) >= 2:
+                experts = list(expert_validations.keys())
+                
+                # Calculate pairwise kappa for each expert against others
+                for expert in experts:
+                    expert_kappa_scores = []
+                    
+                    for other_expert in experts:
+                        if other_expert != expert:
+                            # Get common predictions between this pair of experts
+                            expert_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert]}
+                            other_pred_ids = {v.pred_severity_id.id for v in expert_validations[other_expert]}
+                            common_pred_ids = expert_pred_ids.intersection(other_pred_ids)
+                            
+                            if len(common_pred_ids) >= 2:  # Need at least 2 common predictions
+                                # Get predictions for common prediction IDs
+                                expert_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                             for v in expert_validations[expert] if v.pred_severity_id.id in common_pred_ids}
+                                other_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                            for v in expert_validations[other_expert] if v.pred_severity_id.id in common_pred_ids}
+                                
+                                # Create aligned lists for the same predictions
+                                expert_predictions = []
+                                other_predictions = []
+                                for pred_id in common_pred_ids:
+                                    if pred_id in expert_vals and pred_id in other_vals:
+                                        expert_predictions.append(expert_vals[pred_id])
+                                        other_predictions.append(other_vals[pred_id])
+                                
+                                # Calculate Cohen's Kappa for this pair
+                                if len(expert_predictions) >= 2:
+                                    try:
+                                        kappa = cohen_kappa_score(expert_predictions, other_predictions)
+                                        expert_kappa_scores.append(kappa)
+                                        print(f"Kappa between {expert.email} and {other_expert.email}: {kappa}")
+                                        print(f"Expert 1 predictions: {expert_predictions}")
+                                        print(f"Expert 2 predictions: {other_predictions}")
+                                    except Exception as e:
+                                        print(f"Error calculating kappa: {e}")
+                    
+                    # Average kappa scores for this expert
+                    if expert_kappa_scores:
+                        avg_kappa = sum(expert_kappa_scores) / len(expert_kappa_scores)
+                        run_data['expert_kappas'][expert.email] = round(avg_kappa, 3)
+                    else:
+                        run_data['expert_kappas'][expert.email] = 'Insufficient data'
+                
+                # Calculate overall kappa (average of all pairwise kappas)
+                if len(expert_validations) >= 2:
+                    all_kappa_scores = []
+                    
+                    experts_list = list(expert_validations.keys())
+                    for i in range(len(experts_list)):
+                        for j in range(i + 1, len(experts_list)):
+                            expert1, expert2 = experts_list[i], experts_list[j]
+                            
+                            expert1_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert1]}
+                            expert2_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert2]}
+                            common_pred_ids = expert1_pred_ids.intersection(expert2_pred_ids)
+                            
+                            if len(common_pred_ids) >= 2:
+                                expert1_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                              for v in expert_validations[expert1] if v.pred_severity_id.id in common_pred_ids}
+                                expert2_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                              for v in expert_validations[expert2] if v.pred_severity_id.id in common_pred_ids}
+                                
+                                # Create aligned prediction lists
+                                pred1_list = []
+                                pred2_list = []
+                                for pred_id in common_pred_ids:
+                                    if pred_id in expert1_vals and pred_id in expert2_vals:
+                                        pred1_list.append(expert1_vals[pred_id])
+                                        pred2_list.append(expert2_vals[pred_id])
+                                
+                                if len(pred1_list) >= 2:
+                                    try:
+                                        kappa = cohen_kappa_score(pred1_list, pred2_list)
+                                        all_kappa_scores.append(kappa)
+                                    except:
+                                        pass
+                    
+                    if all_kappa_scores:
+                        overall_kappa = sum(all_kappa_scores) / len(all_kappa_scores)
+                        run_data['overall_kappa'] = round(overall_kappa, 3)
+                    else:
+                        run_data['overall_kappa'] = 'N/A'
+            else:
+                # Single expert - Cohen's Kappa requires at least 2 experts
+                for expert in expert_validations.keys():
+                    run_data['expert_kappas'][expert.email] = 'Single expert'
+                run_data['overall_kappa'] = 'Single expert'
+                print(f"Single expert detected: {list(expert_validations.keys())[0].email}")
+        
+        analytics_data.append(run_data)
+    
+    context = {
+        'analytics_data': analytics_data,
+        'total_runs': len(analytics_data)
+    }
+    
+    return render(request, 'validation/analytics_dashboard.html', context)
+
+
+@staff_member_required
+def export_validation_results_csv(request, run_id=None):
+    """Export validation results as CSV."""
+    import csv
+    from django.http import HttpResponse
+    
+    # Create the HttpResponse object with CSV header
+    response = HttpResponse(content_type='text/csv')
+    
+    if run_id:
+        run = get_object_or_404(Run, id=run_id)
+        filename = f'validation_results_run_{run.id}_{run.name.replace(" ", "_")}.csv'
+        
+        # Filter validations for specific run
+        validations = Validation.objects.filter(
+            pred_severity_id__run_id=run,
+            validated_at__isnull=False
+        ).select_related(
+            'user_id', 'pred_severity_id', 'pred_severity_id__exam_id'
+        ).order_by('pred_severity_id__exam_id__external_id', 'pred_severity_id__vertebrae_level')
+    else:
+        filename = 'all_validation_results.csv'
+        
+        # Get all validations
+        validations = Validation.objects.filter(
+            validated_at__isnull=False
+        ).select_related(
+            'user_id', 'pred_severity_id', 'pred_severity_id__exam_id', 'pred_severity_id__run_id'
+        ).order_by('pred_severity_id__run_id', 'pred_severity_id__exam_id__external_id', 'pred_severity_id__vertebrae_level')
+    
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    writer = csv.writer(response)
+    
+    # Write CSV header
+    headers = [
+        'Run ID', 'Run Name', 'Exam ID', 'Exam External ID', 
+        'Vertebrae Level', 'Original Prediction', 'Original Confidence',
+        'Expert Email', 'Expert Validation', 'Is Correct', 
+        'Validated At', 'Comment'
+    ]
+    writer.writerow(headers)
+    
+    # Write data rows
+    for validation in validations:
+        row = [
+            validation.pred_severity_id.run_id.id,
+            validation.pred_severity_id.run_id.name,
+            validation.pred_severity_id.exam_id.id,
+            validation.pred_severity_id.exam_id.external_id,
+            validation.pred_severity_id.vertebrae_level,
+            validation.pred_severity_id.severity_name,
+            validation.pred_severity_id.confidence,
+            validation.user_id.email,
+            validation.severity_name or validation.pred_severity_id.severity_name,
+            'Yes' if validation.is_correct else 'No',
+            validation.validated_at.strftime('%Y-%m-%d %H:%M:%S') if validation.validated_at else '',
+            validation.comment or ''
+        ]
+        writer.writerow(row)
+    
+    return response
+
+
+@staff_member_required
+def run_analytics_detail(request, run_id):
+    """Detailed analytics view for a specific run."""
+    from sklearn.metrics import cohen_kappa_score, confusion_matrix
+    from collections import defaultdict, Counter
+    import json
+    
+    run = get_object_or_404(Run, id=run_id)
+    
+    # Get all validations for this run
+    validations = Validation.objects.filter(
+        pred_severity_id__run_id=run,
+        validated_at__isnull=False
+    ).select_related('user_id', 'pred_severity_id', 'pred_severity_id__exam_id')
+    
+    if not validations.exists():
+        messages.warning(request, f'No validation data found for run "{run.name}".')
+        return redirect('validation:analytics_dashboard')
+    
+    # Calculate detailed metrics
+    analytics = {
+        'run': run,
+        'total_validations': validations.count(),
+        'experts': {},
+        'overall_metrics': {},
+        'confusion_matrix': {},
+        'severity_breakdown': {}
+    }
+    
+    # Group by expert
+    expert_validations = defaultdict(list)
+    for validation in validations:
+        expert_validations[validation.user_id].append(validation)
+    
+    # Calculate metrics for each expert
+    for expert, expert_vals in expert_validations.items():
+        expert_stats = {
+            'total_validations': len(expert_vals),
+            'correct_validations': sum(1 for v in expert_vals if v.is_correct),
+            'accuracy': 0,
+            'severity_counts': Counter(),
+            'agreement_with_others': {}
+        }
+        
+        # Calculate accuracy
+        if expert_stats['total_validations'] > 0:
+            expert_stats['accuracy'] = (expert_stats['correct_validations'] / expert_stats['total_validations']) * 100
+        
+        # Count severity classifications
+        for val in expert_vals:
+            severity = val.severity_name or val.pred_severity_id.severity_name
+            expert_stats['severity_counts'][severity] += 1
+        
+        # Convert Counter to dict for template compatibility
+        expert_stats['severity_counts'] = dict(expert_stats['severity_counts'])
+        
+        analytics['experts'][expert.email] = expert_stats
+    
+    # Calculate inter-rater agreement (Cohen's Kappa)
+    if len(expert_validations) >= 2:
+        experts = list(expert_validations.keys())
+        kappa_matrix = {}
+        
+        for i, expert1 in enumerate(experts):
+            kappa_matrix[expert1.email] = {}
+            for j, expert2 in enumerate(experts):
+                if i != j:
+                    # Find common predictions
+                    expert1_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert1]}
+                    expert2_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert2]}
+                    common_pred_ids = expert1_pred_ids.intersection(expert2_pred_ids)
+                    
+                    if len(common_pred_ids) >= 5:
+                        expert1_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                      for v in expert_validations[expert1] if v.pred_severity_id.id in common_pred_ids}
+                        expert2_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                      for v in expert_validations[expert2] if v.pred_severity_id.id in common_pred_ids}
+                        
+                        pred1_list = [expert1_vals[pid] for pid in common_pred_ids if pid in expert1_vals]
+                        pred2_list = [expert2_vals[pid] for pid in common_pred_ids if pid in expert2_vals]
+                        
+                        if len(pred1_list) >= 5 and len(pred1_list) == len(pred2_list):
+                            try:
+                                kappa = cohen_kappa_score(pred1_list, pred2_list)
+                                kappa_matrix[expert1.email][expert2.email] = round(kappa, 3)
+                            except:
+                                kappa_matrix[expert1.email][expert2.email] = 'N/A'
+                        else:
+                            kappa_matrix[expert1.email][expert2.email] = 'Insufficient data'
+                    else:
+                        kappa_matrix[expert1.email][expert2.email] = 'Insufficient data'
+                else:
+                    kappa_matrix[expert1.email][expert2.email] = 1.0  # Perfect agreement with self
+        
+        analytics['kappa_matrix'] = kappa_matrix
+    
+    # Overall severity breakdown
+    all_severities = Counter()
+    original_severities = Counter()
+    
+    for validation in validations:
+        validated_severity = validation.severity_name or validation.pred_severity_id.severity_name
+        all_severities[validated_severity] += 1
+        original_severities[validation.pred_severity_id.severity_name] += 1
+    
+    analytics['severity_breakdown'] = {
+        'validated': dict(all_severities),
+        'original': dict(original_severities)
+    }
+    
+    # Overall accuracy
+    correct_count = validations.filter(is_correct=True).count()
+    analytics['overall_accuracy'] = (correct_count / analytics['total_validations']) * 100 if analytics['total_validations'] > 0 else 0
+    
+    context = {
+        'analytics': analytics,
+        'severity_choices': [choice[0] for choice in Severity.choices],
+        'severity_breakdown_json': json.dumps(analytics['severity_breakdown'])
+    }
+    
+    return render(request, 'validation/run_analytics_detail.html', context)
+
+

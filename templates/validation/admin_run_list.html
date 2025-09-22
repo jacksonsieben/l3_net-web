@@ -141,6 +141,16 @@
                   <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors run-detail" data-run-id="{{ run.id }}" data-type="prediction_count">
                     <span class="loading-spinner">Loading...</span> predictions
                   </span>
+                  {% if run.assignments_locked %}
+                  <span class="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 px-2 py-1 rounded-full">
+                    🔒 Assignments Locked
+                  </span>
+                  {% endif %}
+                  {% if run.intra_operator_study_name %}
+                  <span class="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-2 py-1 rounded-full">
+                    📊 {{ run.study_type|title }}
+                  </span>
+                  {% endif %}
                   <!-- Status Display and Change -->
                   <div class="flex items-center space-x-2">
                     <span class="text-xs text-gray-500 dark:text-gray-400 transition-colors">Status:</span>
@@ -188,6 +198,31 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                 </svg>
               </a>
+              
+              <!-- Duplicate for Intra-Operator Study -->
+              <a
+                href="{% url 'validation:duplicate_run' run.pk %}"
+                class="inline-flex items-center p-1.5 border border-transparent text-xs font-medium rounded text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-800 hover:bg-purple-200 dark:hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-purple-500 transition-colors"
+                title="Duplicate for Intra-Operator Study"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+              </a>
+              
+              <!-- Intra-Operator Analytics (show only if has related runs) -->
+              {% if run.is_intra_operator_study %}
+              <a
+                href="{% url 'validation:intra_operator_analytics' run.pk %}"
+                class="inline-flex items-center p-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-800 hover:bg-indigo-200 dark:hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-indigo-500 transition-colors"
+                title="Intra-Operator Analytics"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+              </a>
+              {% endif %}
+              
               <a
                 href="{% url 'validation:admin_run_delete' run.pk %}"
                 class="inline-flex items-center p-1.5 border border-transparent text-xs font-medium rounded text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"

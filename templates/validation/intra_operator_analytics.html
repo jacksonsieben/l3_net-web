@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Intra-Operator Analytics{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                        Intra-Operator Reliability Analysis
+                    </h1>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        Study: <span class="font-medium">{{ study_name }}</span>
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Analyzing agreement between validation rounds by the same expert
+                    </p>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{% url 'validation:run_analytics_detail' original_run.id %}" 
+                       class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                        Back to Run Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Study Overview -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Study Overview</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ related_runs|length }}</div>
+                    <div class="text-sm text-blue-800 dark:text-blue-300">Validation Rounds</div>
+                </div>
+                <div class="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ intra_operator_data|length }}</div>
+                    <div class="text-sm text-green-800 dark:text-green-300">Participating Experts</div>
+                </div>
+                <div class="bg-purple-50 dark:bg-purple-900 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {% if intra_operator_data and intra_operator_data.0.kappa_scores %}
+                            {{ intra_operator_data.0.kappa_scores.0.common_predictions|default:"0" }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                    <div class="text-sm text-purple-800 dark:text-purple-300">Common Predictions</div>
+                </div>
+                <div class="bg-orange-50 dark:bg-orange-900 p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {% if intra_operator_data %}
+                            {{ intra_operator_data.0.kappa_scores|length|default:"0" }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                    <div class="text-sm text-orange-800 dark:text-orange-300">Pairwise Comparisons</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Validation Rounds -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Validation Rounds</h2>
+            <div class="grid gap-4">
+                {% for run in related_runs %}
+                <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div>
+                        <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ run.name }}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ run.run_date|date:"M d, Y H:i" }} • 
+                            Type: {{ run.study_type|default:"original" }} • 
+                            Status: {{ run.get_status_display }}
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ run.get_total_predictions }}</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">predictions</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Expert Analysis -->
+        {% for expert_data in intra_operator_data %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Expert: {{ expert_data.expert.email }}
+                {% if expert_data.expert.first_name or expert_data.expert.last_name %}
+                    ({{ expert_data.expert.get_full_name }})
+                {% endif %}
+            </h2>
+            
+            <!-- Validation Summary -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Validation Summary</h3>
+                <div class="grid gap-3">
+                    {% for round_data in expert_data.rounds %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ round_data.run.name }}</span>
+                        <div class="text-right">
+                            <span class="text-lg font-semibold text-blue-600 dark:text-blue-400">{{ round_data.validation_count }}</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400 ml-1">validations</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Kappa Scores -->
+            {% if expert_data.kappa_scores %}
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Intra-Operator Agreement (Cohen"s Kappa)</h3>
+                <div class="grid gap-3">
+                    {% for kappa_data in expert_data.kappa_scores %}
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">
+                                {{ kappa_data.round1 }} vs {{ kappa_data.round2 }}
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                Based on {{ kappa_data.common_predictions }} common predictions
+                            </div>
+                        </div>
+                        <div>
+                            {% if kappa_data.kappa >= 0.8 %}
+                                <span class="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
+                                    {{ kappa_data.kappa }} (Excellent)
+                                </span>
+                            {% elif kappa_data.kappa >= 0.6 %}
+                                <span class="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                                    {{ kappa_data.kappa }} (Good)
+                                </span>
+                            {% elif kappa_data.kappa >= 0.4 %}
+                                <span class="px-3 py-1 text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full">
+                                    {{ kappa_data.kappa }} (Moderate)
+                                </span>
+                            {% elif kappa_data.kappa >= 0.2 %}
+                                <span class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
+                                    {{ kappa_data.kappa }} (Fair)
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">
+                                    {{ kappa_data.kappa }} (Poor)
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <div class="text-gray-500 dark:text-gray-400">
+                    <p>Insufficient data for Cohen"s Kappa calculation</p>
+                    <p class="text-sm mt-1">Expert needs to validate at least 2 rounds with common predictions</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div class="text-center py-8">
+                <div class="text-gray-500 dark:text-gray-400">
+                    <p>No expert validation data found for intra-operator analysis</p>
+                    <p class="text-sm mt-1">Experts need to validate predictions in multiple rounds for comparison</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Interpretation Guide -->
+        <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">Cohen"s Kappa Interpretation</h3>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div class="text-center">
+                    <div class="w-3 h-3 bg-red-500 rounded-full mx-auto mb-1"></div>
+                    <div class="font-medium text-blue-900 dark:text-blue-100">< 0.2</div>
+                    <div class="text-blue-700 dark:text-blue-300">Poor</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-1"></div>
+                    <div class="font-medium text-blue-900 dark:text-blue-100">0.2 - 0.4</div>
+                    <div class="text-blue-700 dark:text-blue-300">Fair</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-3 h-3 bg-orange-500 rounded-full mx-auto mb-1"></div>
+                    <div class="font-medium text-blue-900 dark:text-blue-100">0.4 - 0.6</div>
+                    <div class="text-blue-700 dark:text-blue-300">Moderate</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-1"></div>
+                    <div class="font-medium text-blue-900 dark:text-blue-100">0.6 - 0.8</div>
+                    <div class="text-blue-700 dark:text-blue-300">Good</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
+                    <div class="font-medium text-blue-900 dark:text-blue-100">≥ 0.8</div>
+                    <div class="text-blue-700 dark:text-blue-300">Excellent</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -14,6 +14,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 from django.contrib.admin.views.decorators import staff_member_required
 from django import forms
+from collections import defaultdict, Counter
 import json
 import os
 
@@ -754,6 +755,16 @@ class AdminRunAssignmentView(FormView):
         user = form.cleaned_data['user']
         notes = form.cleaned_data['notes']
         
+        # Check if assignments are locked for this run
+        if run.assignments_locked:
+            messages.error(
+                self.request, 
+                f'Cannot assign "{run.name}" - assignments are locked to maintain '
+                f'expert consistency for intra-operator reliability study. '
+                f'This run is part of: {run.intra_operator_study_name or "a reliability study"}'
+            )
+            return super().form_invalid(form)
+        
         # Check if assignment already exists
         assignment, created = RunAssignment.objects.get_or_create(
             run=run,
@@ -968,6 +979,16 @@ class AdminRunAssignView(FormView):
         run = form.cleaned_data['run']
         user = form.cleaned_data['user']
         notes = form.cleaned_data['notes']
+        
+        # Check if assignments are locked for this run
+        if run.assignments_locked:
+            messages.error(
+                self.request, 
+                f'Cannot assign "{run.name}" - assignments are locked to maintain '
+                f'expert consistency for intra-operator reliability study. '
+                f'This run is part of: {run.intra_operator_study_name or "a reliability study"}'
+            )
+            return super().form_invalid(form)
         
         # Check if assignment already exists
         assignment, created = RunAssignment.objects.get_or_create(
@@ -1761,5 +1782,535 @@ def run_analytics_detail(request, run_id):
     }
     
     return render(request, 'validation/run_analytics_detail.html', context)
+
+
+@staff_member_required
+def duplicate_run_for_intra_operator(request, run_id):
+    """
+    Safely duplicate a run for intra-operator reliability studies.
+    Creates a complete copy with new prediction IDs but same data.
+    """
+    original_run = get_object_or_404(Run, id=run_id)
+    
+    if request.method == 'POST':
+        try:
+            # Get study name from form
+            study_name = request.POST.get('study_name', f"Intra-operator study for {original_run.name}")
+            round_number = request.POST.get('round_number', '2')
+            
+            # Create the duplicate run
+            duplicate_run = Run.objects.create(
+                name=f"{original_run.name} - Round {round_number}",
+                description=f"Intra-operator reliability round {round_number} for: {original_run.description or original_run.name}",
+                status=RunStatus.OPEN,
+                original_run=original_run,
+                study_type=f'intra_operator_round_{round_number}',
+                intra_operator_study_name=study_name,
+                assignments_locked=True  # Lock assignments to prevent changes
+            )
+            
+            # Update original run to mark it as part of a study if not already
+            if not original_run.intra_operator_study_name:
+                original_run.study_type = 'original'
+                original_run.intra_operator_study_name = study_name
+                original_run.save()
+            
+            # Copy all exam relationships
+            duplicate_run.exams.set(original_run.exams.all())
+            
+            # Copy all assignments to maintain expert consistency for intra-operator analysis
+            from validation.models import RunAssignment
+            original_assignments = RunAssignment.objects.filter(run=original_run)
+            
+            for assignment in original_assignments:
+                RunAssignment.objects.create(
+                    run=duplicate_run,
+                    user=assignment.user,
+                    assigned_by=request.user,  # Current admin who created the duplicate
+                    notes=f"Auto-assigned from original run {original_run.id} for intra-operator reliability study. "
+                          f"Original assignment: {assignment.notes or 'No notes'}"
+                )
+            
+            # Duplicate all predicted severities with new IDs
+            for pred_severity in original_run.predicted_severities.all():
+                # Create new prediction with same data but new ID
+                new_pred = PredSeverity.objects.create(
+                    severity_name=pred_severity.severity_name,
+                    confidence=pred_severity.confidence,
+                    vertebrae_level=pred_severity.vertebrae_level,
+                    run_id=duplicate_run,
+                    exam_id=pred_severity.exam_id,
+                    model_version=pred_severity.model_version,
+                    bounding_box=pred_severity.bounding_box
+                )
+            
+            # Copy predicted vertebrae if they exist
+            for pred_vertebra in original_run.predicted_vertebrae.all():
+                PredVertebra.objects.create(
+                    name=pred_vertebra.name,  # Fixed: was vertebra_name
+                    confidence=pred_vertebra.confidence,
+                    run_id=duplicate_run,
+                    exam_id=pred_vertebra.exam_id,
+                    model_version=pred_vertebra.model_version,
+                    polygon=pred_vertebra.polygon  # Fixed: was bounding_box
+                )
+            
+            messages.success(
+                request, 
+                f'Successfully created duplicate run "{duplicate_run.name}" for intra-operator reliability study. '
+                f'Original data remains completely untouched. New run has {duplicate_run.get_total_predictions()} predictions ready for validation.'
+            )
+            
+            return redirect('validation:admin_run_list')
+            
+        except Exception as e:
+            messages.error(request, f'Error creating duplicate run: {str(e)}')
+            return redirect('validation:admin_run_list')
+    
+    # GET request - show confirmation form
+    context = {
+        'original_run': original_run,
+        'prediction_count': original_run.get_total_predictions(),
+        'exam_count': original_run.get_exam_count(),
+    }
+    
+    return render(request, 'validation/duplicate_run_form.html', context)
+
+
+@staff_member_required 
+def intra_operator_analytics(request, run_id):
+    """
+    Show intra-operator analytics comparing validation rounds by the same expert.
+    """
+    original_run = get_object_or_404(Run, id=run_id)
+    
+    # Get all related runs for this intra-operator study
+    related_runs = original_run.get_related_runs()
+    
+    if len(related_runs) < 2:
+        messages.info(request, 'This run has no duplicates for intra-operator analysis.')
+        return redirect('validation:run_analytics_detail', run_id=run_id)
+    
+    # Calculate intra-operator agreement for each expert
+    intra_operator_data = []
+    
+    for expert in CustomUser.objects.filter(validations__pred_severity_id__run_id__in=related_runs).distinct():
+        expert_data = {
+            'expert': expert,
+            'rounds': [],
+            'kappa_scores': []
+        }
+        
+        # Get validations for each round
+        for run in related_runs:
+            validations = Validation.objects.filter(
+                pred_severity_id__run_id=run,
+                user_id=expert
+            ).select_related('pred_severity_id')
+            
+            if validations.exists():
+                expert_data['rounds'].append({
+                    'run': run,
+                    'validation_count': validations.count(),
+                    'validations': validations
+                })
+        
+        # Calculate Cohen's Kappa between rounds for this expert
+        if len(expert_data['rounds']) >= 2:
+            from sklearn.metrics import cohen_kappa_score
+            
+            # Compare each pair of rounds
+            for i in range(len(expert_data['rounds'])):
+                for j in range(i + 1, len(expert_data['rounds'])):
+                    round1 = expert_data['rounds'][i]
+                    round2 = expert_data['rounds'][j]
+                    
+                    # Get common predictions (same vertebrae level and exam)
+                    round1_vals = {}
+                    round2_vals = {}
+                    
+                    for val in round1['validations']:
+                        key = (val.pred_severity_id.exam_id.id, val.pred_severity_id.vertebrae_level)
+                        round1_vals[key] = val.severity_name or val.pred_severity_id.severity_name
+                    
+                    for val in round2['validations']:
+                        key = (val.pred_severity_id.exam_id.id, val.pred_severity_id.vertebrae_level)
+                        round2_vals[key] = val.severity_name or val.pred_severity_id.severity_name
+                    
+                    # Find common predictions
+                    common_keys = set(round1_vals.keys()).intersection(set(round2_vals.keys()))
+                    
+                    if len(common_keys) >= 2:
+                        pred1_list = [round1_vals[key] for key in common_keys]
+                        pred2_list = [round2_vals[key] for key in common_keys]
+                        
+                        try:
+                            kappa = cohen_kappa_score(pred1_list, pred2_list)
+                            expert_data['kappa_scores'].append({
+                                'round1': round1['run'].name,
+                                'round2': round2['run'].name,
+                                'kappa': round(kappa, 3),
+                                'common_predictions': len(common_keys)
+                            })
+                        except:
+                            pass
+        
+        if expert_data['rounds']:
+            intra_operator_data.append(expert_data)
+    
+    context = {
+        'original_run': original_run,
+        'related_runs': related_runs,
+        'intra_operator_data': intra_operator_data,
+        'study_name': original_run.intra_operator_study_name,
+    }
+    
+    return render(request, 'validation/intra_operator_analytics.html', context)
+
+
+@staff_member_required
+def comprehensive_run_analytics(request, run_id):
+    """
+    Comprehensive analytics showing both inter-operator and intra-operator metrics for a run.
+    """
+    original_run = get_object_or_404(Run, id=run_id)
+    
+    # Get all related runs for this study (original + duplicates)
+    related_runs = original_run.get_related_runs()
+    
+    # Get all experts who validated any run in this study
+    all_experts = CustomUser.objects.filter(
+        validations__pred_severity_id__run_id__in=related_runs
+    ).distinct()
+    
+    # Inter-operator analysis (between different experts on same run)
+    inter_operator_data = {}
+    for run in related_runs:
+        run_validations = Validation.objects.filter(
+            pred_severity_id__run_id=run
+        ).select_related('user_id', 'pred_severity_id')
+        
+        # Group by expert
+        expert_validations = defaultdict(list)
+        for validation in run_validations:
+            expert_validations[validation.user_id].append(validation)
+        
+        # Calculate inter-operator kappa for this run
+        if len(expert_validations) >= 2:
+            from sklearn.metrics import cohen_kappa_score
+            experts_list = list(expert_validations.keys())
+            run_kappa_scores = []
+            
+            for i in range(len(experts_list)):
+                for j in range(i + 1, len(experts_list)):
+                    expert1, expert2 = experts_list[i], experts_list[j]
+                    
+                    # Get common predictions
+                    expert1_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert1]}
+                    expert2_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert2]}
+                    common_pred_ids = expert1_pred_ids.intersection(expert2_pred_ids)
+                    
+                    if len(common_pred_ids) >= 2:
+                        expert1_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                      for v in expert_validations[expert1] if v.pred_severity_id.id in common_pred_ids}
+                        expert2_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                      for v in expert_validations[expert2] if v.pred_severity_id.id in common_pred_ids}
+                        
+                        pred1_list = []
+                        pred2_list = []
+                        for pred_id in common_pred_ids:
+                            if pred_id in expert1_vals and pred_id in expert2_vals:
+                                pred1_list.append(expert1_vals[pred_id])
+                                pred2_list.append(expert2_vals[pred_id])
+                        
+                        if len(pred1_list) >= 2:
+                            try:
+                                kappa = cohen_kappa_score(pred1_list, pred2_list)
+                                run_kappa_scores.append({
+                                    'expert1': expert1.email,
+                                    'expert2': expert2.email,
+                                    'kappa': round(kappa, 3),
+                                    'common_predictions': len(pred1_list)
+                                })
+                            except:
+                                pass
+            
+            inter_operator_data[run.id] = {
+                'run': run,
+                'expert_count': len(expert_validations),
+                'kappa_scores': run_kappa_scores,
+                'average_kappa': round(sum(score['kappa'] for score in run_kappa_scores) / len(run_kappa_scores), 3) if run_kappa_scores else None
+            }
+        else:
+            inter_operator_data[run.id] = {
+                'run': run,
+                'expert_count': len(expert_validations),
+                'kappa_scores': [],
+                'average_kappa': 'Single expert' if len(expert_validations) == 1 else 'No data'
+            }
+    
+    # Intra-operator analysis (same expert across different runs)
+    intra_operator_data = []
+    if len(related_runs) >= 2:
+        from sklearn.metrics import cohen_kappa_score
+        
+        for expert in all_experts:
+            expert_data = {
+                'expert': expert,
+                'rounds': [],
+                'kappa_scores': []
+            }
+            
+            # Get validations for each round for this expert
+            for run in related_runs:
+                validations = Validation.objects.filter(
+                    pred_severity_id__run_id=run,
+                    user_id=expert
+                ).select_related('pred_severity_id')
+                
+                if validations.exists():
+                    expert_data['rounds'].append({
+                        'run': run,
+                        'validation_count': validations.count(),
+                        'validations': validations
+                    })
+            
+            # Calculate intra-operator kappa between rounds
+            if len(expert_data['rounds']) >= 2:
+                for i in range(len(expert_data['rounds'])):
+                    for j in range(i + 1, len(expert_data['rounds'])):
+                        round1 = expert_data['rounds'][i]
+                        round2 = expert_data['rounds'][j]
+                        
+                        # Get common predictions (same vertebrae level and exam)
+                        round1_vals = {}
+                        round2_vals = {}
+                        
+                        for val in round1['validations']:
+                            key = (val.pred_severity_id.exam_id.id, val.pred_severity_id.vertebrae_level)
+                            round1_vals[key] = val.severity_name or val.pred_severity_id.severity_name
+                        
+                        for val in round2['validations']:
+                            key = (val.pred_severity_id.exam_id.id, val.pred_severity_id.vertebrae_level)
+                            round2_vals[key] = val.severity_name or val.pred_severity_id.severity_name
+                        
+                        # Find common predictions
+                        common_keys = set(round1_vals.keys()).intersection(set(round2_vals.keys()))
+                        
+                        if len(common_keys) >= 2:
+                            pred1_list = [round1_vals[key] for key in common_keys]
+                            pred2_list = [round2_vals[key] for key in common_keys]
+                            
+                            try:
+                                kappa = cohen_kappa_score(pred1_list, pred2_list)
+                                expert_data['kappa_scores'].append({
+                                    'round1': round1['run'].name,
+                                    'round2': round2['run'].name,
+                                    'kappa': round(kappa, 3),
+                                    'common_predictions': len(common_keys)
+                                })
+                            except:
+                                pass
+            
+            if expert_data['rounds']:
+                intra_operator_data.append(expert_data)
+    
+    # Calculate overall study metrics
+    study_metrics = {
+        'total_runs': len(related_runs),
+        'total_experts': len(all_experts),
+        'has_inter_operator': any(data['kappa_scores'] for data in inter_operator_data.values()),
+        'has_intra_operator': any(expert_data['kappa_scores'] for expert_data in intra_operator_data),
+        'study_name': original_run.intra_operator_study_name or f"Study for {original_run.name}"
+    }
+    
+    context = {
+        'original_run': original_run,
+        'related_runs': related_runs,
+        'inter_operator_data': inter_operator_data,
+        'intra_operator_data': intra_operator_data,
+        'study_metrics': study_metrics,
+        'all_experts': all_experts,
+    }
+    
+    return render(request, 'validation/comprehensive_analytics.html', context)
+
+
+@staff_member_required
+def export_comprehensive_analytics_csv(request, run_id):
+    """
+    Export comprehensive analytics including both inter-operator and intra-operator metrics.
+    """
+    original_run = get_object_or_404(Run, id=run_id)
+    related_runs = original_run.get_related_runs()
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="comprehensive_analytics_run_{run_id}_{original_run.name.replace(" ", "_")}_{timezone.now().strftime("%Y-%m-%d_%H_%M_%S")}.csv"'
+    
+    import csv
+    writer = csv.writer(response)
+    
+    # Write header information
+    writer.writerow(['Comprehensive Analytics Report'])
+    writer.writerow(['Study Name', original_run.intra_operator_study_name or f"Study for {original_run.name}"])
+    writer.writerow(['Original Run', original_run.name])
+    writer.writerow(['Export Date', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Total Runs', len(related_runs)])
+    writer.writerow([])
+    
+    # Inter-operator metrics section
+    writer.writerow(['INTER-OPERATOR RELIABILITY (Between Different Experts)'])
+    writer.writerow(['Run ID', 'Run Name', 'Expert 1', 'Expert 2', 'Cohen\'s Kappa', 'Common Predictions', 'Agreement Level'])
+    
+    for run in related_runs:
+        run_validations = Validation.objects.filter(
+            pred_severity_id__run_id=run
+        ).select_related('user_id', 'pred_severity_id')
+        
+        expert_validations = defaultdict(list)
+        for validation in run_validations:
+            expert_validations[validation.user_id].append(validation)
+        
+        if len(expert_validations) >= 2:
+            from sklearn.metrics import cohen_kappa_score
+            experts_list = list(expert_validations.keys())
+            
+            for i in range(len(experts_list)):
+                for j in range(i + 1, len(experts_list)):
+                    expert1, expert2 = experts_list[i], experts_list[j]
+                    
+                    expert1_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert1]}
+                    expert2_pred_ids = {v.pred_severity_id.id for v in expert_validations[expert2]}
+                    common_pred_ids = expert1_pred_ids.intersection(expert2_pred_ids)
+                    
+                    if len(common_pred_ids) >= 2:
+                        expert1_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                      for v in expert_validations[expert1] if v.pred_severity_id.id in common_pred_ids}
+                        expert2_vals = {v.pred_severity_id.id: v.severity_name or v.pred_severity_id.severity_name 
+                                      for v in expert_validations[expert2] if v.pred_severity_id.id in common_pred_ids}
+                        
+                        pred1_list = []
+                        pred2_list = []
+                        for pred_id in common_pred_ids:
+                            if pred_id in expert1_vals and pred_id in expert2_vals:
+                                pred1_list.append(expert1_vals[pred_id])
+                                pred2_list.append(expert2_vals[pred_id])
+                        
+                        if len(pred1_list) >= 2:
+                            try:
+                                kappa = cohen_kappa_score(pred1_list, pred2_list)
+                                
+                                # Determine agreement level
+                                if kappa >= 0.8:
+                                    level = 'Excellent'
+                                elif kappa >= 0.6:
+                                    level = 'Good'
+                                elif kappa >= 0.4:
+                                    level = 'Moderate'
+                                elif kappa >= 0.2:
+                                    level = 'Fair'
+                                else:
+                                    level = 'Poor'
+                                
+                                writer.writerow([
+                                    run.id,
+                                    run.name,
+                                    expert1.email,
+                                    expert2.email,
+                                    round(kappa, 3),
+                                    len(pred1_list),
+                                    level
+                                ])
+                            except:
+                                pass
+        elif len(expert_validations) == 1:
+            expert = list(expert_validations.keys())[0]
+            writer.writerow([
+                run.id,
+                run.name,
+                expert.email,
+                '-',
+                'Single expert',
+                '-',
+                'N/A'
+            ])
+    
+    writer.writerow([])
+    
+    # Intra-operator metrics section
+    writer.writerow(['INTRA-OPERATOR RELIABILITY (Same Expert Across Time)'])
+    writer.writerow(['Expert', 'Round 1', 'Round 2', 'Cohen\'s Kappa', 'Common Predictions', 'Agreement Level'])
+    
+    if len(related_runs) >= 2:
+        all_experts = CustomUser.objects.filter(
+            validations__pred_severity_id__run_id__in=related_runs
+        ).distinct()
+        
+        for expert in all_experts:
+            expert_rounds = []
+            
+            for run in related_runs:
+                validations = Validation.objects.filter(
+                    pred_severity_id__run_id=run,
+                    user_id=expert
+                ).select_related('pred_severity_id')
+                
+                if validations.exists():
+                    expert_rounds.append({
+                        'run': run,
+                        'validations': validations
+                    })
+            
+            if len(expert_rounds) >= 2:
+                from sklearn.metrics import cohen_kappa_score
+                
+                for i in range(len(expert_rounds)):
+                    for j in range(i + 1, len(expert_rounds)):
+                        round1 = expert_rounds[i]
+                        round2 = expert_rounds[j]
+                        
+                        round1_vals = {}
+                        round2_vals = {}
+                        
+                        for val in round1['validations']:
+                            key = (val.pred_severity_id.exam_id.id, val.pred_severity_id.vertebrae_level)
+                            round1_vals[key] = val.severity_name or val.pred_severity_id.severity_name
+                        
+                        for val in round2['validations']:
+                            key = (val.pred_severity_id.exam_id.id, val.pred_severity_id.vertebrae_level)
+                            round2_vals[key] = val.severity_name or val.pred_severity_id.severity_name
+                        
+                        common_keys = set(round1_vals.keys()).intersection(set(round2_vals.keys()))
+                        
+                        if len(common_keys) >= 2:
+                            pred1_list = [round1_vals[key] for key in common_keys]
+                            pred2_list = [round2_vals[key] for key in common_keys]
+                            
+                            try:
+                                kappa = cohen_kappa_score(pred1_list, pred2_list)
+                                
+                                if kappa >= 0.8:
+                                    level = 'Excellent'
+                                elif kappa >= 0.6:
+                                    level = 'Good'
+                                elif kappa >= 0.4:
+                                    level = 'Moderate'
+                                elif kappa >= 0.2:
+                                    level = 'Fair'
+                                else:
+                                    level = 'Poor'
+                                
+                                writer.writerow([
+                                    expert.email,
+                                    round1['run'].name,
+                                    round2['run'].name,
+                                    round(kappa, 3),
+                                    len(common_keys),
+                                    level
+                                ])
+                            except:
+                                pass
+    
+    return response
 
 

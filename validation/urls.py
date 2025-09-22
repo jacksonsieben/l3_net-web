@@ -41,4 +41,12 @@ urlpatterns = [
     path('analytics/run/<int:run_id>/', views.run_analytics_detail, name='run_analytics_detail'),
     path('export/csv/', views.export_validation_results_csv, name='export_validation_csv'),
     path('export/csv/<int:run_id>/', views.export_validation_results_csv, name='export_validation_csv'),
+    
+    # Intra-operator reliability URLs (Admin only)
+    path('admin/run/<int:run_id>/duplicate/', views.duplicate_run_for_intra_operator, name='duplicate_run'),
+    path('analytics/intra-operator/<int:run_id>/', views.intra_operator_analytics, name='intra_operator_analytics'),
+    
+    # Comprehensive analytics URLs (Admin only)
+    path('analytics/comprehensive/<int:run_id>/', views.comprehensive_run_analytics, name='comprehensive_analytics'),
+    path('export/comprehensive-csv/<int:run_id>/', views.export_comprehensive_analytics_csv, name='export_comprehensive_csv'),
 ]

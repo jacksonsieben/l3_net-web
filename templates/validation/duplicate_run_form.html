@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}
+    Duplicate Run for Intra-Operator Study
+{% endblock title %}
+{% block content %}
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Duplicate Run for Intra-Operator Study</h1>
+                <!-- Warning Alert -->
+                <div class="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400"
+                                 fill="currentColor"
+                                 viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd">
+                                </path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Safe Data Duplication & Assignment Protection</h3>
+                            <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                                <p>
+                                    This will create a complete copy of the run with new prediction IDs. The <strong>original data will remain completely untouched</strong> and safe.
+                                </p>
+                                <p class="mt-2">
+                                    <strong>Assignment Protection:</strong> All current assignments will be copied to the duplicate run, and the duplicate will be <strong>locked to prevent new assignments</strong>. This ensures the same experts validate both rounds for accurate intra-operator reliability analysis.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Original Run Info -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Original Run Details</h3>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="font-medium text-gray-600 dark:text-gray-400">Name:</span>
+                            <span class="text-gray-900 dark:text-gray-100 ml-2">{{ original_run.name }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600 dark:text-gray-400">Date:</span>
+                            <span class="text-gray-900 dark:text-gray-100 ml-2">{{ original_run.run_date|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600 dark:text-gray-400">Exams:</span>
+                            <span class="text-gray-900 dark:text-gray-100 ml-2">{{ exam_count }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600 dark:text-gray-400">Predictions:</span>
+                            <span class="text-gray-900 dark:text-gray-100 ml-2">{{ prediction_count }}</span>
+                        </div>
+                    </div>
+                    {% if original_run.description %}
+                        <div class="mt-3">
+                            <span class="font-medium text-gray-600 dark:text-gray-400">Description:</span>
+                            <p class="text-gray-900 dark:text-gray-100 mt-1">{{ original_run.description }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- Duplication Form -->
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    <div>
+                        <label for="study_name"
+                               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Study Name
+                        </label>
+                        <input type="text"
+                               id="study_name"
+                               name="study_name"
+                               value="Intra-operator study for {{ original_run.name }}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                               required>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">This name will group all related runs for analysis</p>
+                    </div>
+                    <div>
+                        <label for="round_number"
+                               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Round Number
+                        </label>
+                        <select id="round_number"
+                                name="round_number"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
+                            <option value="2">Round 2</option>
+                            <option value="3">Round 3</option>
+                            <option value="4">Round 4</option>
+                            <option value="5">Round 5</option>
+                        </select>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose the validation round number for this duplicate</p>
+                    </div>
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end space-x-3">
+                        <a href="{% url 'validation:admin_run_list' %}"
+                           class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            Cancel
+                        </a>
+                        <button type="submit"
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            Create Duplicate Run
+                        </button>
+                    </div>
+                </form>
+                <!-- Safety Note -->
+                <div class="mt-6 text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-600 pt-4">
+                    <p>
+                        <strong>Safety guarantee:</strong> This operation creates entirely new database records. Your original run (ID: {{ original_run.id }}) and all existing validations will remain completely unchanged and accessible.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
